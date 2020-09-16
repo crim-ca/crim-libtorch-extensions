@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "models/EfficientNet.h"
+//#define USE_RELU6 
 
 std::string random_string()
 {
@@ -100,6 +101,11 @@ int round_repeats(int repeats, GlobalParams p)
         return repeats;
     return int(std::ceil(multiplier * repeats));
 }
+/*class SwishImpl : public torch::autograd::Function<float>
+{
+};
+*/
+
 
 torch::Tensor swish(torch::Tensor x)
 {
@@ -148,6 +154,74 @@ torch::Tensor swish(torch::Tensor x)
         self._project_conv = Conv2d(in_channels=oup, out_channels=final_oup, kernel_size=1, bias=False)
         self._bn2 = nn.BatchNorm2d(num_features=final_oup, momentum=self._bn_mom, eps=self._bn_eps)
         self._swish = MemoryEfficientSwish()*/
+
+
+/*
+class MBConvBlock(nn.Module):
+    """Mobile Inverted Residual Bottleneck Block.
+    Args:
+        block_args (namedtuple): BlockArgs, defined in utils.py.
+        global_params (namedtuple): GlobalParam, defined in utils.py.
+        image_size (tuple or list): [image_height, image_width].
+    References:
+        [1] https://arxiv.org/abs/1704.04861 (MobileNet v1)
+        [2] https://arxiv.org/abs/1801.04381 (MobileNet v2)
+        [3] https://arxiv.org/abs/1905.02244 (MobileNet v3)
+    """
+
+    def __init__(self, block_args, global_params, image_size=None):
+        super().__init__()
+        self._block_args = block_args
+        self._bn_mom = 1 - global_params.batch_norm_momentum # pytorch's difference from tensorflow
+        self._bn_eps = global_params.batch_norm_epsilon
+        self.has_se = (self._block_args.se_ratio is not None) and (0 < self._block_args.se_ratio <= 1)
+        self.id_skip = block_args.id_skip  # whether to use skip connection and drop connect
+
+        # Expansion phase (Inverted Bottleneck)
+        inp = self._block_args.input_filters  # number of input channels
+        oup = self._block_args.input_filters * self._block_args.expand_ratio  # number of output channels
+        if self._block_args.expand_ratio != 1:
+            Conv2d = get_same_padding_conv2d(image_size=image_size)
+            self._expand_conv = Conv2d(in_channels=inp, out_channels=oup, kernel_size=1, bias=False)
+            self._bn0 = nn.BatchNorm2d(num_features=oup, momentum=self._bn_mom, eps=self._bn_eps)
+            # image_size = calculate_output_image_size(image_size, 1) <-- this wouldn't modify image_size
+
+        # Depthwise convolution phase
+        k = self._block_args.kernel_size
+        s = self._block_args.stride
+        Conv2d = get_same_padding_conv2d(image_size=image_size)
+        self._depthwise_conv = Conv2d(
+            in_channels=oup, out_channels=oup, groups=oup,  # groups makes it depthwise
+            kernel_size=k, stride=s, bias=False)
+        self._bn1 = nn.BatchNorm2d(num_features=oup, momentum=self._bn_mom, eps=self._bn_eps)
+        image_size = calculate_output_image_size(image_size, s)
+
+        # Squeeze and Excitation layer, if desired
+        if self.has_se:
+            Conv2d = get_same_padding_conv2d(image_size=(1, 1))
+            num_squeezed_channels = max(1, int(self._block_args.input_filters * self._block_args.se_ratio))
+            self._se_reduce = Conv2d(in_channels=oup, out_channels=num_squeezed_channels, kernel_size=1)
+            self._se_expand = Conv2d(in_channels=num_squeezed_channels, out_channels=oup, kernel_size=1)
+
+        # Pointwise convolution phase
+        final_oup = self._block_args.output_filters
+        Conv2d = get_same_padding_conv2d(image_size=image_size)
+        self._project_conv = Conv2d(in_channels=oup, out_channels=final_oup, kernel_size=1, bias=False)
+        self._bn2 = nn.BatchNorm2d(num_features=final_oup, momentum=self._bn_mom, eps=self._bn_eps)
+        self._swish = MemoryEfficientSwish()
+
+    
+
+    def set_swish(self, memory_efficient=True):
+        """Sets swish function as memory efficient (for training) or standard (for export).
+        Args:
+            memory_efficient (bool): Whether to use memory-efficient version of swish.
+        """
+        self._swish = MemoryEfficientSwish() if memory_efficient else Swish()
+
+*/
+
+
 
 MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs)
     : /*_depthwise_conv(nullptr), _expand_conv(nullptr), _project_conv(nullptr),*/ _bn0(nullptr)
@@ -259,18 +333,28 @@ def forward(self, inputs, drop_connect_rate=None):
                 x = drop_connect(x, p=drop_connect_rate, training=self.training)
             x = x + inputs  # skip connection
         return x
-
 */
 
 torch::Tensor MBConvBlockImpl::forward(torch::Tensor inputs, double drop_connect_rate)
 {
+   // std::cout << "@@"<<inputs.dtype() << std::endl;
+    torch::nn::ReLU6 relu6(torch::nn::ReLU6Options().inplace(true));
     auto x = inputs;
     if (blockargs.expand_ratio != 1) {
+        #ifdef USE_RELU6
+        x = relu6(_bn0->forward(_expand_conv->forward(inputs)));
+        #else
         x = swish(_bn0->forward(_expand_conv->forward(inputs)));
+        #endif
+      
     }
     auto xx = _depthwise_conv->forward(x);
-
+    #ifdef USE_RELU6
+    x = relu6(_bn1->forward(xx));
+    #else
     x = swish(_bn1->forward(xx));
+    #endif
+    
     if (has_se) {
         x = _seexpand_conv->forward(_sereduce_conv->forward(x));
     }
@@ -362,7 +446,7 @@ EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classe
     _gp = gp;
 
     auto out_channels = round_filters(32, gp);
-    auto opti = torch::nn::Conv2dOptions(3, out_channels, 3).bias(false).stride(1);
+    auto opti = torch::nn::Conv2dOptions(3, out_channels, 3).bias(false).stride(2);
     _conv_stem = new Conv2dStaticSamePadding(opti, gp.image_size);
     _bn0 = torch::nn::BatchNorm2d(
             torch::nn::BatchNorm2dOptions(out_channels).momentum(gp.batch_norm_momentum).eps(gp.batch_norm_epsilon));
@@ -387,7 +471,7 @@ EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classe
     */
     int lastoutpf = 0;
     int blkno = 0;
-    for (auto ba : blockargs) {
+    for (auto ba : blockargs) {  // 7 blocks: nb repeats=1,2,2,3,3,4,1
         ba.input_filters = round_filters(ba.input_filters, gp);
         ba.output_filters = round_filters(ba.output_filters, gp);
         ba.repeats = round_repeats(ba.repeats, gp);
@@ -425,7 +509,6 @@ EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classe
         self._fc = nn.Linear(out_channels, self._global_params.num_classes)
         self._swish = MemoryEfficientSwish()
         */
-    std::cout << "NUM CLASSES=" << num_classes << std::endl;
     _avg_pooling = torch::nn::AdaptiveAvgPool2d(1);
     _dropout = torch::nn::Dropout(torch::nn::DropoutOptions().p(gp.dropout_rate).inplace(true));
     _fc = torch::nn::Linear(torch::nn::LinearOptions(out_channels, num_classes).bias(false));
@@ -476,7 +559,6 @@ torch::Tensor EfficientNetV1Impl::forward(torch::Tensor inputs)
     auto bs = inputs.size(0);
     auto x = extract_features(inputs);
     x = _avg_pooling->forward(x);
-    std::cout << "inside forward: x size=" << x.sizes() << std::endl;
     x = x.view({bs,1536});
     x = _dropout->forward(x);
     return _fc(x);
@@ -484,20 +566,38 @@ torch::Tensor EfficientNetV1Impl::forward(torch::Tensor inputs)
 
 torch::Tensor EfficientNetV1Impl::extract_features(torch::Tensor inputs)
 {
+    torch::nn::ReLU6 relu6(torch::nn::ReLU6Options().inplace(true));
     //stem
     auto y = _conv_stem->forward(inputs);
- 
+    //std::cout << "EF: " << inputs.dtype() << std::endl;
+//    std::cout << "EF: " << y.dtype() << std::endl;
+    #ifdef USE_RELU6
+    auto x = relu6(_bn0->forward(y));
+    #else
     auto x = swish(_bn0->forward(y));
+    #endif
+    
+  //  std::cout << "EF: " << x.dtype() << std::endl;
     //blocks
     int idx = 0;
     for (auto block : _blocks) {
         auto drop_connect_rate = _gp.drop_connect_rate;
         if (drop_connect_rate > 0)
             drop_connect_rate *= float(idx) / _blocks.size();
+        //block->get()->pretty_print(std::cout);
         x = block->get()->forward(x, drop_connect_rate);
+    //    std::cout << "    EF: " << x.dtype() << std::endl;
+        // Testing use of half precision...
+       // x = x.to(torch::kHalf);
+
 
         idx++;
     }
     // head
+    #ifdef USE_RELU6
+    return relu6(_bn1->forward(_conv_head->forward(x)));
+    #else
     return swish(_bn1->forward(_conv_head->forward(x)));
+    #endif
+    
 }
