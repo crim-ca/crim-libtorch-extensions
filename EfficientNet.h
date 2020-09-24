@@ -41,7 +41,7 @@ class Conv2dStaticSamePadding : public torch::nn::Conv2d
 public:
     Conv2dStaticSamePadding() = default;
 
-    Conv2dStaticSamePadding(torch::nn::Conv2dOptions o, int64_t image_size)
+    Conv2dStaticSamePadding(torch::nn::Conv2dOptions o, int64_t image_size_w, int64_t image_size_h)
         : torch::nn::Conv2d(o), static_padding(nullptr)
     {
         //1
@@ -54,8 +54,8 @@ public:
         torch::ExpandingArray<2Ui64>& stridearr = this->get()->options.stride();
         auto stridevals = *stridearr;
         stride = stridevals[0];
-        auto iw = image_size;
-        auto ih = image_size;
+        auto iw = image_size_w;
+        auto ih = image_size_h;
         auto szlen = this->get()->weight.sizes().size();
         auto kh = this->get()->weight.sizes()[szlen-2]; 
         auto kw = this->get()->weight.sizes()[szlen - 1];
@@ -153,7 +153,7 @@ struct GlobalParams
 {
     GlobalParams() = default;
     GlobalParams(double w, double d, int64_t res, double dor)
-        : width_coefficient(w), depth_coefficient(d), image_size(res), dropout_rate(dor)
+        : width_coefficient(w), depth_coefficient(d), image_size_w(res), image_size_h(res),dropout_rate(dor)
     {
     }
     GlobalParams(const GlobalParams&) = default;
@@ -165,14 +165,14 @@ struct GlobalParams
     double drop_connect_rate = 0.2;
     int depth_divisor = 8;
     int min_depth = -1;
-    int64_t image_size;
+    int64_t image_size_w, image_size_h;
 };
 
 struct MBConvBlockImpl : public torch::nn::Module
 {
 public:
     MBConvBlockImpl() = default;
-    MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs);
+    MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs, int64_t imgsize_w, int64_t imgsize_h);
 
     BlockArgs /*std::tuple*/ blockargs;
     double _bn_mom;
@@ -208,6 +208,7 @@ struct EfficientNetV1Impl : torch::nn::Module
 
     torch::Tensor forward(torch::Tensor x);
     torch::Tensor extract_features(torch::Tensor x);
+    // https://github.com/lukemelas/EfficientNet-PyTorch/issues/13
     std::vector<BlockArgs> blockargs = {BlockArgs(1, 3, 1, 1, 32, 16, 0.25, true),
                                         BlockArgs(2, 3, 2, 6, 16, 24, 0.25, true),
                                         BlockArgs(2, 5, 2, 6, 24, 40, 0.25, true),

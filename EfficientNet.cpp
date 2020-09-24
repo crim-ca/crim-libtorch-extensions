@@ -223,7 +223,7 @@ class MBConvBlock(nn.Module):
 
 
 
-MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs)
+MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs, int64_t _imgsize_w, int64_t _imgsize_h)
     : /*_depthwise_conv(nullptr), _expand_conv(nullptr), _project_conv(nullptr),*/ _bn0(nullptr)
     , _bn1(nullptr)
     , _bn2(nullptr)
@@ -233,7 +233,8 @@ MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs)
     _bn_eps = globalargs.batch_norm_epsilon;
     has_se = block_args.se_ratio > 0 && block_args.se_ratio <= 1;
     id_skip = block_args.id_skip;
-    auto imgsize = globalargs.image_size;
+    auto imgsize_w = _imgsize_w;
+    auto imgsize_h = _imgsize_h;
     // Expansion phase
     auto inp = block_args.input_filters;
     auto outp = block_args.input_filters * block_args.expand_ratio;
@@ -246,7 +247,7 @@ MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs)
             self._bn0 = nn.BatchNorm2d(num_features=oup, momentum=self._bn_mom, eps=self._bn_eps)
             # image_size = calculate_output_image_size(image_size, 1) <-- this would do nothing
         */
-        _expand_conv = new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(inp, outp, 1 /*{1}*/).bias(false), imgsize);
+        _expand_conv = new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(inp, outp, 1 /*{1}*/).bias(false), imgsize_w,imgsize_h);
         _bn0 = torch::nn::BatchNorm2d(torch::nn::BatchNorm2dOptions(outp).momentum(_bn_mom).eps(_bn_eps));
     }
     /*
@@ -261,11 +262,14 @@ MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs)
     auto k = block_args.kernel_size;
     auto s = block_args.stride;
     _depthwise_conv = new Conv2dStaticSamePadding(
-            torch::nn::Conv2dOptions(outp, outp, k /*{k}*/).bias(false).stride(s).groups(outp), imgsize);
+            torch::nn::Conv2dOptions(outp, outp, k /*{k}*/).bias(false).stride(s).groups(outp), imgsize_w,imgsize_h);//imgsize);
     /*
      self._bn1 = nn.BatchNorm2d(num_features=oup, momentum=self._bn_mom, eps=self._bn_eps)
         image_size = calculate_output_image_size(image_size, s)
     */
+    imgsize_w = int(std::ceil(imgsize_w / (double)(s)));
+    imgsize_h = int(std::ceil(imgsize_h / (double)(s)));
+
     _bn1 = torch::nn::BatchNorm2d(torch::nn::BatchNorm2dOptions(outp).momentum(_bn_mom).eps(_bn_eps));
 
     //         image_size = calculate_output_image_size(image_size, s)
@@ -276,8 +280,8 @@ MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs)
             self._se_expand = Conv2d(in_channels=num_squeezed_channels, out_channels=oup, kernel_size=1)*/
     if (has_se) {
         auto num_squeezed_channels = std::max(1, int(block_args.input_filters * block_args.se_ratio));
-        _sereduce_conv = new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(outp, num_squeezed_channels, 1), 1);
-        _seexpand_conv = new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(num_squeezed_channels, outp, 1), 1);
+        _sereduce_conv = new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(outp, num_squeezed_channels, 1), 1,1);
+        _seexpand_conv = new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(num_squeezed_channels, outp, 1), 1,1);
     }
     /*
        # Output phase
@@ -288,7 +292,7 @@ MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs)
     */
     auto final_oup = block_args.output_filters;
     this->_project_conv =
-            new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(outp, final_oup, 1 /*{1}*/).bias(false), imgsize);
+            new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(outp, final_oup, 1 /*{1}*/).bias(false), imgsize_w,imgsize_w);
     this->_bn2 = torch::nn::BatchNorm2d(torch::nn::BatchNorm2dOptions(final_oup).momentum(_bn_mom).eps(_bn_eps));
     register_module("dw_" + _depthwise_conv->name, *_depthwise_conv);
     if (_expand_conv)
@@ -447,7 +451,7 @@ EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classe
 
     auto out_channels = round_filters(32, gp);
     auto opti = torch::nn::Conv2dOptions(3, out_channels, 3).bias(false).stride(2);
-    _conv_stem = new Conv2dStaticSamePadding(opti, gp.image_size);
+    _conv_stem = new Conv2dStaticSamePadding(opti, gp.image_size_w, gp.image_size_h);
     _bn0 = torch::nn::BatchNorm2d(
             torch::nn::BatchNorm2dOptions(out_channels).momentum(gp.batch_norm_momentum).eps(gp.batch_norm_epsilon));
     /*
@@ -471,20 +475,31 @@ EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classe
     */
     int lastoutpf = 0;
     int blkno = 0;
+    auto imgsize_w = std::ceil(gp.image_size_w/2.0);
+    auto imgsize_h = std::ceil(gp.image_size_h / 2.0);
+
     for (auto ba : blockargs) {  // 7 blocks: nb repeats=1,2,2,3,3,4,1
         ba.input_filters = round_filters(ba.input_filters, gp);
         ba.output_filters = round_filters(ba.output_filters, gp);
         ba.repeats = round_repeats(ba.repeats, gp);
-        auto blk = new MBConvBlock(ba, gp);
+        std::cout << "Layer " << blkno << ": " << ba.input_filters << "->" << ba.output_filters
+                  << ", rep=" << ba.repeats << ", stride: " <<ba.stride <<", "<< imgsize_w << "x" << imgsize_h << std::endl;
+        auto blk = new MBConvBlock(ba, gp,imgsize_w,imgsize_h);
         register_module("mbconvblk_" + std::to_string(blkno), *blk);
         _blocks.push_back(blk);
+        lastoutpf = ba.output_filters;
+        imgsize_w = std::ceil(imgsize_w / (double)ba.stride);
+        imgsize_h = std::ceil(imgsize_h / (double)ba.stride);
         if (ba.repeats > 1) {
             ba.input_filters = ba.output_filters;
             ba.stride = 1;
         }
-        lastoutpf = ba.output_filters;
+
         for (auto i = 0; i < ba.repeats - 1; i++) {
-            auto blk_rep = new MBConvBlock(ba, gp);
+            auto blk_rep = new MBConvBlock(ba, gp,imgsize_w,imgsize_h);
+            std::cout << "  REP : " << ba.input_filters << "->" << ba.output_filters
+                      << ", " << imgsize_w << "x" << imgsize_h << std::endl;
+
             register_module("mbconvblk_" + std::to_string(blkno) + "_" + std::to_string(i), *blk_rep);
             _blocks.push_back(blk_rep);
         }
@@ -499,7 +514,7 @@ EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classe
     auto in_channels = lastoutpf;
     out_channels = round_filters(1280, gp);
     _conv_head = new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(in_channels, out_channels, 1 /*{1}*/).bias(false),
-                                             gp.image_size);
+                                             imgsize_w,imgsize_h);
     _bn1 = torch::nn::BatchNorm2d(
             torch::nn::BatchNorm2dOptions(out_channels).momentum(gp.batch_norm_momentum).eps(gp.batch_norm_epsilon));
     /*
