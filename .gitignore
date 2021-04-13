@@ -1,0 +1,14 @@
+## IDEs
+.idea
+.vscode
+
+## Build artifacts
+build/
+CMakeCache.txt
+CMakeFiles/
+efficientnet.egg-info
+install/
+
+## External module common locations
+external/
+third[-_]party/

@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#pragma hdrstop
 #include "models/EfficientNet.h"
 //#define USE_RELU6 
 
