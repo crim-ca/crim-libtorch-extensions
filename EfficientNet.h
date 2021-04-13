@@ -3,38 +3,15 @@
 #include <algorithm>
 #include <torch/torch.h>
 #include <tuple>
-
-/*
-class Conv2dStaticSamePadding(nn.Conv2d):
-    """ 2D Convolutions like TensorFlow, for a fixed image size"""
-
-    def __init__(self, in_channels, out_channels, kernel_size, image_size=None, **kwargs):
-        super().__init__(in_channels, out_channels, kernel_size, **kwargs)
-        self.stride = self.stride if len(self.stride) == 2 else [self.stride[0]] * 2
-
-        # Calculate padding based on image size and save it
-        assert image_size is not None
-        ih, iw = image_size if type(image_size) == list else [image_size, image_size]
-        kh, kw = self.weight.size()[-2:]
-        sh, sw = self.stride
-        oh, ow = math.ceil(ih / sh), math.ceil(iw / sw)
-        pad_h = max((oh - 1) * self.stride[0] + (kh - 1) * self.dilation[0] + 1 - ih, 0)
-        pad_w = max((ow - 1) * self.stride[1] + (kw - 1) * self.dilation[1] + 1 - iw, 0)
-        if pad_h > 0 or pad_w > 0:
-            self.static_padding = nn.ZeroPad2d((pad_w // 2, pad_w - pad_w // 2, pad_h // 2, pad_h - pad_h // 2))
-        else:
-            self.static_padding = Identity()
-
-    def forward(self, x):
-        x = self.static_padding(x)
-        x = F.conv2d(x, self.weight, self.bias, self.stride, self.padding, self.dilation, self.groups)
-        return x
-
-*/
 #include <random>
 #include <string>
 
 std::string random_string();
+
+/*
+  C++ adaptation of lukemelas' pytorch implementation of EfficientNet 
+  https://github.com/lukemelas/EfficientNet-PyTorch
+*/
 
 class Conv2dStaticSamePadding : public torch::nn::Conv2d
 {
@@ -68,10 +45,6 @@ public:
         auto pad_w = std::max<int>((ow - 1) * stride + (kw - 1) * dilation[1] + 1 - iw, 0);
         if (pad_h > 0 || pad_w > 0) {
             //(padding_left, padding_right, padding_top, padding_bottom).
-            /*
-             self.static_padding = nn.ZeroPad2d((pad_w - pad_w // 2, pad_w - pad_w // 2,
-                                                pad_h - pad_h // 2, pad_h - pad_h // 2))
-            */
             static_padding = torch::nn::ZeroPad2d(torch::nn::ZeroPad2dOptions(
                     {pad_w - (int)(pad_w / 2), pad_w - (int)(pad_w / 2), pad_h - (int)(pad_h / 2), pad_h - (int)(pad_h / 2)}));
         }
@@ -120,14 +93,6 @@ public:
 
 struct BlockArgs
 {
-    /*
-        'r%d' % block.num_repeat,
-            'k%d' % block.kernel_size,
-            's%d%d' % (block.strides[0], block.strides[1]),
-            'e%s' % block.expand_ratio,
-            'i%d' % block.input_filters,
-            'o%d' % block.output_filters
-    */
     BlockArgs() {}
     BlockArgs(int rep, int ksz, int strd, int expa, int inp, int outp, double se, bool skip)
         : repeats(rep)
@@ -174,7 +139,7 @@ public:
     MBConvBlockImpl() = default;
     MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs, int64_t imgsize_w, int64_t imgsize_h);
 
-    BlockArgs /*std::tuple*/ blockargs;
+    BlockArgs blockargs;
     double _bn_mom;
     double _bn_eps;
     bool has_se = false;
@@ -230,38 +195,7 @@ public:
         return EfficientNetV1Impl::forward(x);
     }
 
-protected:
-    /*
-        params_dict = {
-        # Coefficients:   width,depth,res,dropout
-        'efficientnet-b0': (1.0, 1.0, 224, 0.2),
-        'efficientnet-b1': (1.0, 1.1, 240, 0.2),
-        'efficientnet-b2': (1.1, 1.2, 260, 0.3),
-        'efficientnet-b3': (1.2, 1.4, 300, 0.3),
-        'efficientnet-b4': (1.4, 1.8, 380, 0.4),
-        'efficientnet-b5': (1.6, 2.2, 456, 0.4),
-        'efficientnet-b6': (1.8, 2.6, 528, 0.5),
-        'efficientnet-b7': (2.0, 3.1, 600, 0.5),
-        'efficientnet-b8': (2.2, 3.6, 672, 0.5),
-        'efficientnet-l2': (4.3, 5.3, 800, 0.5),
-    }
-    */
-    std::map<std::string, GlobalParams> params_dict = {{"b0", GlobalParams{1.0, 1.0, 224, 0.2}},
-                                                       {"b1", GlobalParams{1.0, 1.1, 240, 0.2}},
-                                                       {"b2", GlobalParams{1.1, 1.2, 260, 0.3}},
-                                                       {"b3", GlobalParams{1.2, 1.4, 300, 0.3}},
-                                                       {"b4", GlobalParams{1.4, 1.8, 380, 0.4}},
-                                                       {"b5", GlobalParams{1.6, 2.2, 456, 0.4}},
-                                                       {"b6", GlobalParams{1.8, 2.6, 528, 0.5}},
-                                                       {"b7", GlobalParams{2.0, 3.1, 600, 0.5}}};
-    /*   'r1_k3_s11_e1_i32_o16_se0.25',
-        'r2_k3_s22_e6_i16_o24_se0.25',
-        'r2_k5_s22_e6_i24_o40_se0.25',
-        'r3_k3_s22_e6_i40_o80_se0.25',
-        'r3_k5_s11_e6_i80_o112_se0.25',
-        'r4_k5_s22_e6_i112_o192_se0.25',
-        'r1_k3_s11_e6_i192_o320_se0.25',*/
-    //BlockArgs(int rep, int ksz, int strd, int expa, int inp, int outp, double se, bool skip)
+
 };
 
 class EfficientNetB0 : public EfficientNet
@@ -278,4 +212,29 @@ class EfficientNetB2 : public EfficientNet
 {
 public:
     EfficientNetB2(size_t nboutputs) : EfficientNet(GlobalParams{1.1, 1.2, 260, 0.3}, nboutputs) {}
+};
+class EfficientNetB1 : public EfficientNet
+{
+public:
+    EfficientNetB1(size_t nboutputs) : EfficientNet(GlobalParams{1.0, 1.1, 240, 0.2}, nboutputs) {}
+};
+class EfficientNetB4 : public EfficientNet
+{
+public:
+    EfficientNetB4(size_t nboutputs) : EfficientNet(GlobalParams{1.4, 1.8, 380, 0.4}, nboutputs) {}
+};
+class EfficientNetB5 : public EfficientNet
+{
+public:
+    EfficientNetB5(size_t nboutputs) : EfficientNet(GlobalParams{1.6, 2.2, 456, 0.4}, nboutputs) {}
+};
+class EfficientNetB6 : public EfficientNet
+{
+public:
+    EfficientNetB6(size_t nboutputs) : EfficientNet(GlobalParams{1.8, 2.6, 528, 0.5}, nboutputs) {}
+};
+class EfficientNetB7 : public EfficientNet
+{
+public:
+    EfficientNetB7(size_t nboutputs) : EfficientNet(GlobalParams{2.0, 3.1, 600, 0.5}, nboutputs) {}
 };

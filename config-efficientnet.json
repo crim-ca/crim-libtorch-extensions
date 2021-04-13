@@ -1,0 +1,33 @@
+{
+    "VERSION": "2.0.0",
+    "PASSWORD": "password",
+	"BATCH_SIZE": 16,
+	"BATCH_SIZES": [16,2,1],
+	"BATCH_WORKERS": 4,
+    "BATCH_UPDATE_STEPS": 2,
+	"DEVICE_INDEX": 0,
+    "SESSION_ID": "example",
+    "OUTPUT_DIR": "C:\\temp\\output",
+    "INTERMEDIATE_DIR": "C:\\temp\\interm",
+    "EXPL_MODE": "SEARCH",
+    "EXPL_ARCH_LIGHT": [
+        "EfficientNet"        
+    ],
+    "EXPL_ARCH": [
+        "EfficientNet"
+    ],
+    "EXPL_OPTS": [
+ 
+        {
+   "TYPE": "SGD",
+  "LEARNING_RATE": 0.03,
+  "WEIGHT_DECAY": 0.0002,
+  "MOMENTUM": 0.86,
+  "DAMPENING": 0.0,
+  "LEARNING_RATE_DECAY_FACTOR": 0.90,
+"LEARNING_RATE_DECAY_FREQUENCY": 1,
+  "NESTEROV": false
+
+        }
+    ]
+}
