@@ -3,9 +3,9 @@
 .vscode
 
 ## Build artifacts
+**/CMakeCache.txt
+**/CMakeFiles/
 build/
-CMakeCache.txt
-CMakeFiles/
 efficientnet.egg-info
 install/
 
