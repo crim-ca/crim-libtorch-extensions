@@ -1,7 +1,8 @@
 
-# avoid CUDA_ROOT, CUDNN_ROOT, etc. warning messages
-set(CMAKE_POLICY_DEFAULT_CMP0074 OLD)
-cmake_policy(SET CMP0074 OLD)
+if(POLICY CMP0074)
+    set(CMAKE_POLICY_DEFAULT_CMP0074 NEW)
+    cmake_policy(SET CMP0074 NEW)
+endif()
 
 # make utility cmake directory available
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR};${CMAKE_CURRENT_LIST_DIR}")

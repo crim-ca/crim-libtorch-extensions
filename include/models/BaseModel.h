@@ -1,6 +1,5 @@
 #include "stdafx.h"
 #pragma once
-#include <torch/torch.h>
 
 class BaseModel
 {

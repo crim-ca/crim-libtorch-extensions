@@ -1,7 +1,8 @@
+#include "stdafx.h"
 #pragma once
+
 #include "BaseModel.h"
 #include <algorithm>
-#include <torch/torch.h>
 #include <tuple>
 #include <random>
 #include <string>
@@ -9,7 +10,7 @@
 std::string random_string();
 
 /*
-  C++ adaptation of lukemelas' pytorch implementation of EfficientNet 
+  C++ adaptation of lukemelas' pytorch implementation of EfficientNet
   https://github.com/lukemelas/EfficientNet-PyTorch
 */
 
@@ -24,19 +25,19 @@ public:
         //1
         //name = random_string();
         if (this->get()->options.stride().size() != 2) {
-            torch::ExpandingArray<2Ui64>& strides = this->get()->options.stride();
+            torch::ExpandingArray<2ull>& strides = this->get()->options.stride();
             auto stridevals = *strides;
             stridevals[0] *= 2;
         }
-        torch::ExpandingArray<2Ui64>& stridearr = this->get()->options.stride();
+        torch::ExpandingArray<2ull>& stridearr = this->get()->options.stride();
         auto stridevals = *stridearr;
         stride = stridevals[0];
         auto iw = image_size_w;
         auto ih = image_size_h;
         auto szlen = this->get()->weight.sizes().size();
-        auto kh = this->get()->weight.sizes()[szlen-2]; 
+        auto kh = this->get()->weight.sizes()[szlen-2];
         auto kw = this->get()->weight.sizes()[szlen - 1];
-        
+
         //this->get()->weight.sizes()[1];
         auto oh = std::ceil((double)ih / stride);
         auto ow = std::ceil((double)iw / stride);
