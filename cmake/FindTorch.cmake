@@ -164,7 +164,7 @@ list(FILTER TORCH_LIBRARIES EXCLUDE REGEX ".*NOTFOUND")
 list(FILTER TORCH_DLLS EXCLUDE REGEX ".*NOTFOUND")
 
 include(${CMAKE_ROOT}/Modules/FindPackageHandleStandardArgs.cmake)
-find_package_handle_standard_args(TORCH
+find_package_handle_standard_args(Torch
     REQUIRED_VARS
         TORCH_LIBRARY
         TORCH_INCLUDE_DIR

@@ -8,7 +8,7 @@ endif()
 #mark_as_advanced(CONFIG_SOLUTION_NAME)
 project("${CONFIG_SOLUTION_NAME}" LANGUAGES CXX)
 
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake" FORCE)
 include(cmake/configs.cmake)
 include(cmake/utils.cmake)
 
