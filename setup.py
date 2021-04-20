@@ -30,9 +30,18 @@ class CMakeBuild(build_ext):
         self.pytorch_dir = os.path.dirname(torch.__file__)
         self.python_exe = subprocess.check_output(["which", "python"]).decode().strip()
 
+    @staticmethod
+    def get_cmake():
+        cmake_bin = os.getenv("CMAKE_EXECUTABLE", "cmake")
+        result = subprocess.Popen(["which", cmake_bin], shell=False, stdout=subprocess.PIPE, text=True).communicate()
+        cmake_bin = result[0].strip()
+        print("CMAKE", cmake_bin)
+        return cmake_bin
+
     def run(self):
         try:
-            _ = subprocess.check_output(["cmake", "--version"])
+            cmake = self.get_cmake()
+            _ = subprocess.check_output([cmake, "--version"])
         except OSError:
             raise RuntimeError("CMake must be installed to build the following extensions: " +
                                ", ".join(ext.name for ext in self.extensions))
@@ -73,12 +82,10 @@ class CMakeBuild(build_ext):
             os.makedirs(self.build_temp)
         cwd = os.getcwd()
         os.chdir(os.path.dirname(ext_dir))
-        result = subprocess.Popen(["which", "cmake"], shell=False, stdout=subprocess.PIPE, text=True).communicate()
-        cmake_bin = result[0].strip()
-        print("CMAKE", cmake_bin)
-        self.spawn([cmake_bin, " ".join(ext.sources)] + cmake_args)
+        cmake = self.get_cmake()
+        self.spawn([cmake, " ".join(ext.sources)] + cmake_args)
         if not self.dry_run:
-            self.spawn([cmake_bin, "--build", self.build_temp, "--", "-j{}".format(multiprocessing.cpu_count())])
+            self.spawn([cmake, "--build", self.build_temp, "--", "-j{}".format(multiprocessing.cpu_count())])
         os.chdir(cwd)
 
 
