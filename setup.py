@@ -73,9 +73,12 @@ class CMakeBuild(build_ext):
             os.makedirs(self.build_temp)
         cwd = os.getcwd()
         os.chdir(os.path.dirname(ext_dir))
-        self.spawn(["cmake", " ".join(ext.sources)] + cmake_args)
+        result = subprocess.Popen(["which", "cmake"], shell=False, stdout=subprocess.PIPE, text=True).communicate()
+        cmake_bin = result[0].strip()
+        print("CMAKE", cmake_bin)
+        self.spawn([cmake_bin, " ".join(ext.sources)] + cmake_args)
         if not self.dry_run:
-            self.spawn(["cmake", "--build", self.build_temp, "--", "-j{}".format(multiprocessing.cpu_count())])
+            self.spawn([cmake_bin, "--build", self.build_temp, "--", "-j{}".format(multiprocessing.cpu_count())])
         os.chdir(cwd)
 
 
