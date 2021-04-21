@@ -14,8 +14,6 @@ import sys
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
-import torch
-
 
 class CMakeExtension(Extension):
     def __init__(self, name, sources, *args, **kwargs):
@@ -25,13 +23,12 @@ class CMakeExtension(Extension):
 
 
 class CMakeBuild(build_ext):
-    cmake = None
 
     def __init__(self, *args, **kwargs):
         super(CMakeBuild, self).__init__(*args, **kwargs)
-        self.pytorch_dir = os.path.dirname(torch.__file__)
         self.python_exe = subprocess.check_output(["which", "python"]).decode().strip()
-        self.get_cmake()
+        self.pytorch_dir = None
+        self.cmake = self.get_cmake()
 
     def get_cmake(self):
         if self.cmake is None:
@@ -41,20 +38,39 @@ class CMakeBuild(build_ext):
             self.cmake = cmake_bin
         return self.cmake
 
+    @staticmethod
+    def find_torch_dir():
+        """
+        Attempt finding precompiled Torch with ``TORCH_DIR``, ``TORCH_LIBRARY`` or revert back to PyPI package install.
+        """
+        pytorch_dir = os.getenv("TORCH_DIR")
+        pytorch_lib = os.getenv("TORCH_LIBRARY")
+        pytorch_lib_path = "lib/libtorch.so" if platform.system() != "Windows" else "lib/x64/torch.lib"
+        if os.path.isdir(pytorch_dir) and os.path.isfile(os.path.join(pytorch_dir, pytorch_lib_path)):
+            pytorch_lib = os.path.join(pytorch_dir, pytorch_lib_path)
+        elif os.path.isfile(pytorch_lib) and os.path.isdir(pytorch_lib.replace(pytorch_lib_path, "")):
+            pytorch_dir = pytorch_lib.replace(pytorch_lib_path, "")
+        else:
+            try:
+                import torch
+                pytorch_dir = os.path.dirname(torch.__file__)
+                pytorch_lib = os.path.join(pytorch_dir, pytorch_lib_path)
+            except ImportError:
+                sys.stderr.write("Pytorch is required to build this package\n")
+                sys.exit(-1)
+        if not os.path.isdir(pytorch_dir) or not os.path.isfile(pytorch_lib):
+            sys.stderr.write("Pytorch is required to build this package. "
+                             "Set TORCH_DIR for pre-compiled from sources, or install with pip.\n")
+        return pytorch_dir
+
     def run(self):
         try:
-            cmake = self.get_cmake()
-            _ = subprocess.check_output([cmake, "--version"])
+            _ = subprocess.check_output([self.cmake, "--version"])
         except OSError:
             raise RuntimeError("CMake must be installed to build the following extensions: " +
                                ", ".join(ext.name for ext in self.extensions))
 
-        try:
-            import torch
-        except ImportError:
-            sys.stderr.write("Pytorch is required to build this package\n")
-            sys.exit(-1)
-
+        self.pytorch_dir = self.find_torch_dir()
         for ext in self.extensions:
             self.build_cmake(ext)
 
@@ -66,9 +82,11 @@ class CMakeBuild(build_ext):
         print("Extension Dir:", ext_dir)
         print("Ext Build Path:", self.build_temp)
         print("Ext Build Dir:", build_dir)
+
         cmake_args = ["-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(ext_dir),
                       "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
                       "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
+                      "-DTORCH_DIR={}".format(self.pytorch_dir),
                       "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # for kenlm - avoid seg fault
                       # "-DPYTHON_EXECUTABLE=".format(sys.executable),
                       ]
@@ -91,11 +109,10 @@ class CMakeBuild(build_ext):
             os.makedirs(build_dir)
         cwd = os.getcwd()
         os.chdir(build_dir)
-        cmake = self.get_cmake()
-        self.spawn([cmake, " ".join(ext.sources)] + cmake_args)
+        self.spawn([self.cmake, " ".join(ext.sources)] + cmake_args)
         jobs = os.getenv("CMAKE_JOBS", multiprocessing.cpu_count())
         if not self.dry_run:
-            self.spawn([cmake, "--build", ext_dir, "--", "-j{}".format(jobs)])
+            self.spawn([self.cmake, "--build", ext_dir, "--", "-j{}".format(jobs)])
         os.chdir(cwd)
 
 
