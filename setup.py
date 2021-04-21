@@ -60,9 +60,10 @@ class CMakeBuild(build_ext):
 
     def build_cmake(self, ext):
         ext_path = self.get_ext_fullpath(ext.name)
-        print("Extension Path:", ext_path)
-        print("Ext Build Path:", self.build_temp)
         ext_dir = os.path.abspath(os.path.dirname(ext_path))
+        print("Extension Path:", ext_path)
+        print("Extension Dir:", ext_dir)
+        print("Ext Build Path:", self.build_temp)
         cmake_args = ["-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(ext_dir),
                       "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
                       "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
@@ -87,7 +88,7 @@ class CMakeBuild(build_ext):
         if not os.path.exists(self.build_temp):
             os.makedirs(self.build_temp)
         cwd = os.getcwd()
-        os.chdir(os.path.dirname(ext_dir))
+        os.chdir(os.path.dirname(self.build_temp))
         cmake = self.get_cmake()
         self.spawn([cmake, " ".join(ext.sources)] + cmake_args)
         if not self.dry_run:
