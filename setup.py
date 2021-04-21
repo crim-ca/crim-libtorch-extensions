@@ -28,15 +28,20 @@ class CMakeBuild(build_ext):
         super(CMakeBuild, self).__init__(*args, **kwargs)
         self.python_exe = subprocess.check_output(["which", "python"]).decode().strip()
         self.pytorch_dir = None
-        self.cmake = self.get_cmake()
+        self.cmake = None
 
-    def get_cmake(self):
-        if self.cmake is None:
+    @property
+    def cmake(self):
+        if self._cmake is None:
             cmake_bin = os.getenv("CMAKE_EXECUTABLE", "cmake")
             cmake_bin = subprocess.check_output(["which", cmake_bin]).decode().strip()
             print("CMAKE_EXECUTABLE:", cmake_bin)
-            self.cmake = cmake_bin
-        return self.cmake
+            self._cmake = cmake_bin
+        return self._cmake
+
+    @cmake.setter
+    def cmake(self, cmake):
+        self._cmake = cmake
 
     @staticmethod
     def find_torch_dir():
