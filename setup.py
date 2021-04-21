@@ -25,18 +25,21 @@ class CMakeExtension(Extension):
 
 
 class CMakeBuild(build_ext):
+    cmake = None
+
     def __init__(self, *args, **kwargs):
         super(CMakeBuild, self).__init__(*args, **kwargs)
         self.pytorch_dir = os.path.dirname(torch.__file__)
         self.python_exe = subprocess.check_output(["which", "python"]).decode().strip()
+        self.get_cmake()
 
-    @staticmethod
-    def get_cmake():
-        cmake_bin = os.getenv("CMAKE_EXECUTABLE", "cmake")
-        result = subprocess.Popen(["which", cmake_bin], shell=False, stdout=subprocess.PIPE, text=True).communicate()
-        cmake_bin = result[0].strip()
-        print("CMAKE", cmake_bin)
-        return cmake_bin
+    def get_cmake(self):
+        if self.cmake is None:
+            cmake_bin = os.getenv("CMAKE_EXECUTABLE", "cmake")
+            cmake_bin = subprocess.check_output(["which", cmake_bin]).decode().strip()
+            print("CMAKE_EXECUTABLE:", cmake_bin)
+            self.cmake = cmake_bin
+        return self.cmake
 
     def run(self):
         try:
@@ -56,7 +59,10 @@ class CMakeBuild(build_ext):
             self.build_cmake(ext)
 
     def build_cmake(self, ext):
-        ext_dir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
+        ext_path = self.get_ext_fullpath(ext.name)
+        print("Extension Path:", ext_path)
+        print("Ext Build Path:", self.build_temp)
+        ext_dir = os.path.abspath(os.path.dirname(ext_path))
         cmake_args = ["-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(ext_dir),
                       "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
                       "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
