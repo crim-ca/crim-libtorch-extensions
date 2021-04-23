@@ -116,8 +116,11 @@ set(TORCH_INCLUDE_DIRECTORIES
 mark_as_advanced(TORCH_INCLUDE_DIRECTORIES)
 
 ### Optionally, link CUDA
-if(NOT CUDA_FOUND)
-	find_package(CUDA)
+option(USE_CUDA "Use CUDA enabled Torch." ON)
+if(USE_CUDA)
+	if(NOT CUDA_FOUND)
+		find_package(CUDA)
+	endif()
 endif()
 if(CUDA_FOUND)
 	add_definitions(-DCUDA_FOUND)

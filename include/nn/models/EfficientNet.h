@@ -119,41 +119,50 @@ struct BlockArgs
     int stride;
 };
 
-struct GlobalParams
+struct EfficientNetParams
 {
 public:
-    GlobalParams() = default;
-    GlobalParams(double w, double d, int64_t res, double dor)
-        : width_coefficient(w)
-        , depth_coefficient(d)
-        , image_size_w(res)
-        , image_size_h(res)
-        , dropout_rate(dor) {}
-    GlobalParams(const GlobalParams&) = default;
+    EfficientNetParams() = default;
+    EfficientNetParams(double _width_coefficient,
+                       double _depth_coefficient,
+                       int64_t _image_size,
+                       double _dropout_rate,
+                       // above params order remain for backward compatibility
+                       // below with same defaults to make them available as needed but still optional
+                       double _drop_connect_rate = 0.2,
+                       double _batch_norm_momentum = 0.99,
+                       double _batch_norm_epsilon = 0.001,
+                       int _depth_divisor = 8,
+                       int _min_depth = -1,
+                       ActivationFunction _activation = swish)
+        : width_coefficient(_width_coefficient)
+        , depth_coefficient(_depth_coefficient)
+        , image_size_w(_image_size)
+        , image_size_h(_image_size)
+        , dropout_rate(_dropout_rate)
+        , drop_connect_rate(_drop_connect_rate)
+        , batch_norm_momentum(_batch_norm_momentum)
+        , batch_norm_epsilon(_batch_norm_epsilon)
+        , depth_divisor(_depth_divisor)
+        , min_depth(_min_depth)
+        , activation(_activation) 
+    {}
+    
+    EfficientNetParams(const EfficientNetParams&) = default;
+
+    void image_size(int64_t _image_size) { image_size_w = _image_size; image_size_h = image_size_h; }
+    
+    double width_coefficient = -1;
+    double depth_coefficient = -1;
+    double dropout_rate = 0.2;
+    int64_t image_size_w, image_size_h;
+    ActivationFunction activation = swish;
+    double drop_connect_rate = 0.2;
     double batch_norm_momentum = 0.99;
     double batch_norm_epsilon = 0.001;
-    double depth_coefficient = -1;
-    double width_coefficient = -1;
-    double dropout_rate = 0.2;
-    double drop_connect_rate = 0.2;
     int depth_divisor = 8;
     int min_depth = -1;
-    int64_t image_size_w, image_size_h;
 };
-
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-    py::class_<GlobalParams>(m, "GlobalParams", py::dynamic_attr())
-    .def(py::init<>())
-    .def_readwrite("batch_norm_momentum",   &GlobalParams::batch_norm_momentum)
-    .def_readwrite("batch_norm_epsilon",    &GlobalParams::batch_norm_epsilon)
-    .def_readwrite("depth_coefficient",     &GlobalParams::depth_coefficient)
-    .def_readwrite("batch_norm_momentum",   &GlobalParams::batch_norm_momentum)
-    .def_readwrite("width_coefficient",     &GlobalParams::width_coefficient)
-    .def_readwrite("dropout_rate",          &GlobalParams::dropout_rate)
-    .def_readwrite("drop_connect_rate",     &GlobalParams::drop_connect_rate)
-    .def_readwrite("depth_divisor",         &GlobalParams::depth_divisor)
-    .def_readwrite("min_depth",             &GlobalParams::min_depth);
-}
 
 struct MBConvBlockImpl : public torch::nn::Module
 {
@@ -161,13 +170,15 @@ public:
     MBConvBlockImpl() = default;
     MBConvBlockImpl(
         BlockArgs block_args,
-        GlobalParams globalargs,
+        EfficientNetParams params,
         int64_t imgsize_w,
-        int64_t imgsize_h,
-        ActivationFunction activation);
+        int64_t imgsize_h);
 
-    BlockArgs blockargs;
-    ActivationFunction _activation = swish;
+    virtual torch::Tensor forward(torch::Tensor x, double drop_connect_rate);
+
+private:
+    BlockArgs _block_args;
+    EfficientNetParams _params;
     double _bn_mom;
     double _bn_eps;
     bool has_se = false;
@@ -180,8 +191,6 @@ public:
     torch::nn::BatchNorm2d _bn0 = nullptr;
     torch::nn::BatchNorm2d _bn1 = nullptr;
     torch::nn::BatchNorm2d _bn2 = nullptr;
-
-    virtual torch::Tensor forward(torch::Tensor x, double drop_connect_rate);
 };
 TORCH_MODULE(MBConvBlock);
 
@@ -189,9 +198,8 @@ struct EfficientNetV1Impl : torch::nn::Module
 {
     //bool aux_logits, transform_input;
     EfficientNetV1Impl() = default;
-    EfficientNetV1Impl(const GlobalParams& gp, size_t num_classes = 2, ActivationFunction activation = swish);
-    GlobalParams _gp;
-    ActivationFunction _activation = swish;
+    EfficientNetV1Impl(const EfficientNetParams& params, size_t num_classes = 2);
+    EfficientNetParams _params;
     Conv2dStaticSamePadding *_conv_stem, *_conv_head;
     torch::nn::AdaptiveAvgPool2d _avg_pooling = nullptr;
     torch::nn::Dropout _dropout = nullptr;
@@ -218,56 +226,55 @@ class EfficientNet : public BaseModel, public EfficientNetV1Impl
 {
 public:
     EfficientNet(
-        GlobalParams gp,
-        size_t nboutputs,
-        ActivationFunction activation = swish
-    ) : EfficientNetV1Impl(gp, nboutputs, activation) {}
+        EfficientNetParams params,
+        size_t nboutputs
+    ) : EfficientNetV1Impl(params, nboutputs) {}
     virtual void resizeLastLayer(size_t outputCount) {}
     virtual torch::Tensor forward(torch::Tensor x)
     {
         return EfficientNetV1Impl::forward(x);
     }
 
-
+    EfficientNet(const EfficientNet&) = default;
 };
 
 class EfficientNetB0 : public EfficientNet
 {
 public:
-    EfficientNetB0(size_t nboutputs) : EfficientNet(GlobalParams{1.0, 1.0, 224, 0.2}, nboutputs) {}
+    EfficientNetB0(size_t nboutputs) : EfficientNet(EfficientNetParams{1.0, 1.0, 224, 0.2}, nboutputs) {}
 };
 class EfficientNetB3 : public EfficientNet
 {
 public:
-    EfficientNetB3(size_t nboutputs) : EfficientNet(GlobalParams{1.2, 1.4, 300, 0.3}, nboutputs) {}
+    EfficientNetB3(size_t nboutputs) : EfficientNet(EfficientNetParams{1.2, 1.4, 300, 0.3}, nboutputs) {}
 };
 class EfficientNetB2 : public EfficientNet
 {
 public:
-    EfficientNetB2(size_t nboutputs) : EfficientNet(GlobalParams{1.1, 1.2, 260, 0.3}, nboutputs) {}
+    EfficientNetB2(size_t nboutputs) : EfficientNet(EfficientNetParams{1.1, 1.2, 260, 0.3}, nboutputs) {}
 };
 class EfficientNetB1 : public EfficientNet
 {
 public:
-    EfficientNetB1(size_t nboutputs) : EfficientNet(GlobalParams{1.0, 1.1, 240, 0.2}, nboutputs) {}
+    EfficientNetB1(size_t nboutputs) : EfficientNet(EfficientNetParams{1.0, 1.1, 240, 0.2}, nboutputs) {}
 };
 class EfficientNetB4 : public EfficientNet
 {
 public:
-    EfficientNetB4(size_t nboutputs) : EfficientNet(GlobalParams{1.4, 1.8, 380, 0.4}, nboutputs) {}
+    EfficientNetB4(size_t nboutputs) : EfficientNet(EfficientNetParams{1.4, 1.8, 380, 0.4}, nboutputs) {}
 };
 class EfficientNetB5 : public EfficientNet
 {
 public:
-    EfficientNetB5(size_t nboutputs) : EfficientNet(GlobalParams{1.6, 2.2, 456, 0.4}, nboutputs) {}
+    EfficientNetB5(size_t nboutputs) : EfficientNet(EfficientNetParams{1.6, 2.2, 456, 0.4}, nboutputs) {}
 };
 class EfficientNetB6 : public EfficientNet
 {
 public:
-    EfficientNetB6(size_t nboutputs) : EfficientNet(GlobalParams{1.8, 2.6, 528, 0.5}, nboutputs) {}
+    EfficientNetB6(size_t nboutputs) : EfficientNet(EfficientNetParams{1.8, 2.6, 528, 0.5}, nboutputs) {}
 };
 class EfficientNetB7 : public EfficientNet
 {
 public:
-    EfficientNetB7(size_t nboutputs) : EfficientNet(GlobalParams{2.0, 3.1, 600, 0.5}, nboutputs) {}
+    EfficientNetB7(size_t nboutputs) : EfficientNet(EfficientNetParams{2.0, 3.1, 600, 0.5}, nboutputs) {}
 };

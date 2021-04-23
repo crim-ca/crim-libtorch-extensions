@@ -51,9 +51,9 @@ class CMakeBuild(build_ext):
         pytorch_dir = os.getenv("TORCH_DIR")
         pytorch_lib = os.getenv("TORCH_LIBRARY")
         pytorch_lib_path = "lib/libtorch.so" if platform.system() != "Windows" else "lib/x64/torch.lib"
-        if os.path.isdir(pytorch_dir) and os.path.isfile(os.path.join(pytorch_dir, pytorch_lib_path)):
+        if pytorch_dir and os.path.isdir(pytorch_dir) and os.path.isfile(os.path.join(pytorch_dir, pytorch_lib_path)):
             pytorch_lib = os.path.join(pytorch_dir, pytorch_lib_path)
-        elif os.path.isfile(pytorch_lib) and os.path.isdir(pytorch_lib.replace(pytorch_lib_path, "")):
+        elif pytorch_lib and os.path.isfile(pytorch_lib) and os.path.isdir(pytorch_lib.replace(pytorch_lib_path, "")):
             pytorch_dir = pytorch_lib.replace(pytorch_lib_path, "")
         else:
             try:
@@ -66,6 +66,7 @@ class CMakeBuild(build_ext):
         if not os.path.isdir(pytorch_dir) or not os.path.isfile(pytorch_lib):
             sys.stderr.write("Pytorch is required to build this package. "
                              "Set TORCH_DIR for pre-compiled from sources, or install with pip.\n")
+        print("Found PyTorch dir:", pytorch_dir)
         return pytorch_dir
 
     def run(self):
@@ -116,18 +117,26 @@ class CMakeBuild(build_ext):
         os.chdir(build_dir)
         self.spawn([self.cmake, " ".join(ext.sources)] + cmake_args)
         jobs = os.getenv("CMAKE_JOBS", multiprocessing.cpu_count())
+        cmd = [self.cmake, "--build", build_dir, "--", "-j{}".format(jobs)]
         if not self.dry_run:
-            self.spawn([self.cmake, "--build", ext_dir, "--", "-j{}".format(jobs)])
+            self.spawn(cmd)
         os.chdir(cwd)
 
 
+with open("version.txt") as ver:
+    version = ver.readline().strip()
+
+# package will be available as import with that name
+# any submodules are defined on the C++ side by pybind11
+TORCH_EXTENSION_NAME = "efficientnet_libtorch"
 setup(
-    name="efficientnet",
-    description="EfficientNet C++ implementation with PyTorch integration as extension.",
+    name=TORCH_EXTENSION_NAME,
+    version=version,
+    description="Implentation of extensions with PyTorch C++ (libtorch) and Python bindings.",
     author="CRIM",
     ext_modules=[
         CMakeExtension(
-            name="efficientnet_cpp",
+            name=TORCH_EXTENSION_NAME,
             sources=["."],
             extra_compile_args=[],
         )

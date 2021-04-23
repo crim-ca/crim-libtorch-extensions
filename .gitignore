@@ -5,8 +5,9 @@
 ## Build artifacts
 **/CMakeCache.txt
 **/CMakeFiles/
+*.egg
+*.egg-info/
 build/
-efficientnet.egg-info
 install/
 
 ## External module common locations
