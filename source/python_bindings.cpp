@@ -16,8 +16,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     py::module_ e = m.def_submodule("efficientnet", "EfficientNet implementation.");
 
     py::class_<EfficientNetParams>(e, "EfficientNetParams", py::dynamic_attr())
-        .def(py::init<double, double, int64_t, double>(),
-            "Initialize EfficientNet hyper-parameters with provided values."/*,
+        .def(py::init<double, double, int64_t, double, double, double, double, int, int, ActivationFunction>(),
+            "Initialize EfficientNet hyper-parameters with provided values.",
             py::arg("width_coefficient"), 
             py::arg("depth_coefficient"), 
             py::arg("image_size"), 
@@ -27,7 +27,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
             py::arg("batch_norm_epsilon") = 0.001, 
             py::arg("depth_divisor") = 8, 
             py::arg("min_depth") = -1,
-            py::arg("activation") = swish_func*/
+            py::arg("activation") = swish_func
         )
         .def_readwrite("width_coefficient",     &EfficientNetParams::width_coefficient)
         .def_readwrite("depth_coefficient",     &EfficientNetParams::depth_coefficient)
