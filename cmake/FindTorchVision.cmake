@@ -31,9 +31,9 @@ set(TORCHVISION_TARGETS "TorchVision::TorchVision")
 mark_as_advanced(TORCHVISION_TARGETS)
 
 # attempt to find some reference directory
-#   using cmake config 
+#   using cmake config
 find_file(TORCHVISION_CMAKE_CFG TorchVisionConfig.cmake
-	PATHS 
+	PATHS
 		"${TORCHVISION_DIR}"
 		"${TORCHVISION_DIR}/share/cmake/TorchVision"
 		"${TORCHVISION_DIR}/cmake/TorchVision"
@@ -44,15 +44,15 @@ find_file(TORCHVISION_CMAKE_CFG TorchVisionConfig.cmake
 		"${TORCHVISION_ROOT}/cmake/TorchVision"
 		"${TORCHVISION_ROOT}/TorchVision"
 		"${TORCHVISION_ROOT}/vision"
-		"${CONFIG_THIRD_PARTY_DIR}/TorchVision/share/cmake/TorchVision"
-		"${CONFIG_THIRD_PARTY_DIR}/TorchVision/cmake/TorchVision"
-        "${CONFIG_THIRD_PARTY_DIR}/TorchVision"
-        "${CONFIG_THIRD_PARTY_DIR}/vision"
+		"${PROJECT_THIRD_PARTY_DIR}/TorchVision/share/cmake/TorchVision"
+		"${PROJECT_THIRD_PARTY_DIR}/TorchVision/cmake/TorchVision"
+        "${PROJECT_THIRD_PARTY_DIR}/TorchVision"
+        "${PROJECT_THIRD_PARTY_DIR}/vision"
 )
 if(EXISTS "${TORCHVISION_CMAKE_CFG}")
 	include("${TORCHVISION_CMAKE_CFG}")
 else()
-	find_path(TORCHVISION_DIR 
+	find_path(TORCHVISION_DIR
 		NAMES
 			vision.h
 		PATH_SUFFIXES
@@ -64,7 +64,7 @@ else()
 			include/torchvision/csrc
 		PATHS
 			"${TORCHVISION_ROOT}"
-            "${CONFIG_THIRD_PARTY_DIR}/TorchVision"
+            "${PROJECT_THIRD_PARTY_DIR}/TorchVision"
 			NO_DEFAULT_PATH
 	)
 endif()
@@ -87,9 +87,9 @@ endif()
 # endif()
 # find include/library directories
 find_path(TORCHVISION_INCLUDE_DIR
-	NAMES 
+	NAMES
 		torchvision/vision.h
-		torchvision/csrc/vision.h 
+		torchvision/csrc/vision.h
 	PATHS
 		"${TORCHVISION_DIR}/include"
 		"${TORCHVISION_ROOT}/include"
@@ -98,19 +98,19 @@ find_path(TORCHVISION_INCLUDE_DIR
 		NO_DEFAULT_PATH
 )
 find_path(TORCHVISION_LIBDIR torchvision.lib
-	PATHS				
+	PATHS
 		"${TORCHVISION_DIR}/lib"
 		"${TORCHVISION_DIR}/torchvision/lib"
 )
 
 find_library(TORCHVISION_LIBRARY torchvision
-	PATHS 
+	PATHS
 		"${TORCHVISION_LIBDIR}"
 		NO_DEFAULT_PATH
 )
 
-# HACK: 
-#	Since the include dir could be defined as the source, some downloaded zip or cmake installed path, 
+# HACK:
+#	Since the include dir could be defined as the source, some downloaded zip or cmake installed path,
 #	plug all existing variants such that including a relative file will work regardless (eg: #include "models/resnet.h")
 # 	TorchVision_INCLUDE_DIR could be any of the following variants
 set(TORCHVISION_INCLUDE_DIRS "${TorchVision_INCLUDE_DIR}")
@@ -126,7 +126,7 @@ include(${CMAKE_ROOT}/Modules/FindPackageHandleStandardArgs.cmake)
 if(MSVC)
 	find_file(TORCHVISION_DLLS
 		NAMES "torchvision.dll"
-		PATHS 
+		PATHS
 			"${TORCHVISION_DIR}/bin"
 			"${TORCHVISION_DIR}/lib"
 			"${TORCHVISION_DIR}/torchvision/bin"
@@ -149,8 +149,8 @@ mark_as_advanced(TORCHVISION_STATIC_LIBRARIES)
 mark_as_advanced(TORCHVISION_SHARED_LIBRARIES)
 
 find_package_handle_standard_args(TorchVision
-    REQUIRED_VARS 
-        TORCHVISION_LIBRARY 
+    REQUIRED_VARS
+        TORCHVISION_LIBRARY
         TorchVision_INCLUDE_DIR
         TORCHVISION_TARGETS
 )

@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.2.0 FATAL_ERROR)
 
 # solution name
-set(CONFIG_SOLUTION_NAME "EfficientNet" CACHE STRING "Name of the generated solution" FORCE)
-if("${CONFIG_SOLUTION_NAME}" STREQUAL "")
+set(PROJECT_SOLUTION_NAME "EfficientNet" CACHE STRING "Name of the generated solution" FORCE)
+if("${PROJECT_SOLUTION_NAME}" STREQUAL "")
 	message(FATAL_ERROR "Solution name cannot be empty")
 endif()
-#mark_as_advanced(CONFIG_SOLUTION_NAME)
-project("${CONFIG_SOLUTION_NAME}" LANGUAGES CXX)
+#mark_as_advanced(PROJECT_SOLUTION_NAME)
+project("${PROJECT_SOLUTION_NAME}" LANGUAGES CXX)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake" FORCE)
 include(cmake/configs.cmake)
@@ -38,18 +38,18 @@ if(NOT SET_UP_CONFIGURATIONS_DONE)
 endif()
 
 # external modules
-option(CONFIG_WITH_EXTERNAL_MODULE "Look for external module sources (must define its own cmake files)" OFF)
-set(CONFIG_EXTERNAL_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external" CACHE STRING "External module location")
-#mark_as_advanced(CONFIG_WITH_EXTERNAL_MODULE)
-if(${CONFIG_WITH_EXTERNAL_MODULE})
-	if(EXISTS "${CONFIG_EXTERNAL_MODULE_DIR}")
-		add_subdirectory("${CONFIG_EXTERNAL_MODULE_DIR}")
+option(PROJECT_WITH_EXTERNAL_MODULE "Look for external module sources (must define its own cmake files)" OFF)
+set(PROJECT_EXTERNAL_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external" CACHE STRING "External module location")
+#mark_as_advanced(PROJECT_WITH_EXTERNAL_MODULE)
+if(${PROJECT_WITH_EXTERNAL_MODULE})
+	if(EXISTS "${PROJECT_EXTERNAL_MODULE_DIR}")
+		add_subdirectory("${PROJECT_EXTERNAL_MODULE_DIR}")
 	endif()
 endif()
 
 # tests
-option(CONFIG_WITH_TESTS "Build tests module(s)" OFF)
-#mark_as_advanced(CONFIG_WITH_TESTS)
+option(PROJECT_WITH_TESTS "Build tests module(s)" OFF)
+#mark_as_advanced(PROJECT_WITH_TESTS)
 
 # sources
 set(${PROJECT_NAME}_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
@@ -68,7 +68,9 @@ list(APPEND CMAKE_MESSAGE_INDENT "  ")
         message(DEBUG "Found ${file}")
     endforeach()
 list(POP_BACK CMAKE_MESSAGE_INDENT)
-add_library(${PROJECT_NAME} SHARED ${PROJECT_HEADERS} ${PROJECT_SOURCES})
+set(PROJECT_LIBRARY_TYPE "SHARED" CACHE STRING "Library type to build.")
+set_property(CACHE PROJECT_LIBRARY_TYPE PROPERTY STRINGS SHARED STATIC)
+add_library(${PROJECT_NAME} ${PROJECT_LIBRARY_TYPE} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 if(MSVC)
     source_group(TREE "${${PROJECT_NAME}_INCLUDE_DIR}" PREFIX "Headers" FILES ${PROJECT_HEADERS})
     source_group(TREE "${${PROJECT_NAME}_SOURCES_DIR}" PREFIX "Sources" FILES ${PROJECT_SOURCES})
@@ -86,25 +88,23 @@ list(APPEND INCLUDE_DIRS "${TORCH_INCLUDE_DIR}")
 list(APPEND EXTERNAL_LIBS "${TORCH_LIBRARIES}")
 list(APPEND EXTERNAL_DLLS "${TORCH_DLLS}")
 list(APPEND EXTERNAL_DEPS "torch")
+option(PROJECT_WITH_PYTHON "Enable Python support. Must match compilation of Torch library." ON)
+if(${PROJECT_WITH_PYTHON})
+    find_package(Python COMPONENTS Development)
+    list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})
+    list(APPEND EXTERNAL_LIBS ${Python_LIBRARIES})
+endif()
 
 # library
 add_dependencies(${PROJECT_NAME} ${EXTERNAL_DEPS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${PROJECT_NAME} PROPERTY OUTPUT_NAME "${PROJECT_NAME}")
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER "${PROJECT_HEADERS}")
-message(DEBUG "Include dirs:" ${INCLUDE_DIRS})
-message(DEBUG "Include libs:" ${LIBRARIES})
-message(DEBUG "External libs:" ${EXTERNAL_LIBS})
+message(DEBUG "Include dirs:  " "${INCLUDE_DIRS}")
+message(DEBUG "Include libs:  " "${LIBRARIES}")
+message(DEBUG "External libs: " "${EXTERNAL_LIBS}")
 target_include_directories(${PROJECT_NAME} PUBLIC "${INCLUDE_DIRS}" "${${PROJECT_NAME}_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC "${EXTERNAL_LIBS}")
-if(${CONFIG_WITH_CORE_PRECOMPILED_HEADER_COMMON})
-    # FIXME: this should work according to doc, but causes header to be deleted by the target just before it starts compiling
-    #   results into header being 'not-found' and failing whole compile
-    #   still seem to do the right thing automatically becasue of added dependency to 'Core' target...
-    #   doc:
-    #   https://cmake.org/cmake/help/latest/command/target_precompile_headers.html?highlight=precompiled%20header#reusing-precompile-headers
-	#target_precompile_headers(${PROJECT_NAME} REUSE_FROM Core)
-endif()
 
 # installation
 include(GNUInstallDirs)
@@ -117,11 +117,14 @@ install(TARGETS ${PROJECT_NAME}
 )
 #install(DIRECTORY "${${PROJECT_NAME}_INCLUDE_DIR}" DESTINATION "include/${PROJECT_NAME}")
 
+if(${PROJECT_LIBRARY_TYPE} STREQUAL "SHARED")
+    set(${PROJECT_NAME}_SHARED_LIBRARIES "${PROJECT_NAME}")
+else()
+    set(${PROJECT_NAME}_STATIC_LIBRARIES "${PROJECT_NAME}")
+endif()
 # The following code block is suggested to be used on Windows.
 # According to https://github.com/pytorch/pytorch/issues/25457,
 # the DLLs need to be copied to avoid memory errors.
-set(${PROJECT_NAME}_SHARED_LIBRARIES "")
-set(${PROJECT_NAME}_STATIC_LIBRARIES "${PROJECT_NAME}")
 if(MSVC)
 	add_custom_command(TARGET ${PROJECT_NAME}
 					   POST_BUILD

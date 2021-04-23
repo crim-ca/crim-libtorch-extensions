@@ -1,9 +1,9 @@
 #include "stdafx.h"
 #pragma hdrstop
-#include "models/EfficientNet.h"
-//#define USE_RELU6 
 
+#include "nn/models/EfficientNet.h"
 
+// FIXME: move to utils
 // USed to generate unique module names
 std::string random_string()
 {
@@ -52,6 +52,7 @@ int round_filters(int filters, GlobalParams p)
     return new_filters;
 }
 
+// FIXME: move to tests
 // if width_coefficient==10: expected values are 32 64 88 112 128 152 208
 void test_round_filters()
 {
@@ -63,7 +64,7 @@ void test_round_filters()
     }
 }
 
-
+// FIXME: move to utils
 // Round number of filters based on depth multiplier.
 int round_repeats(int repeats, GlobalParams p)
 {
@@ -72,13 +73,6 @@ int round_repeats(int repeats, GlobalParams p)
         return repeats;
     return int(std::ceil(multiplier * repeats));
 }
-
-
-torch::Tensor swish(torch::Tensor x)
-{
-    return x * torch::sigmoid(x);
-}
-
 
 /*
     """Mobile Inverted Residual Bottleneck Block.
@@ -92,10 +86,16 @@ torch::Tensor swish(torch::Tensor x)
         [3] https://arxiv.org/abs/1905.02244 (MobileNet v3)
     """
 */
-MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs, int64_t _imgsize_w, int64_t _imgsize_h)
+MBConvBlockImpl::MBConvBlockImpl(
+    BlockArgs block_args,
+    GlobalParams globalargs,
+    int64_t _imgsize_w,
+    int64_t _imgsize_h,
+    ActivationFunction activation)
     : /*_depthwise_conv(nullptr), _expand_conv(nullptr), _project_conv(nullptr),*/ _bn0(nullptr)
     , _bn1(nullptr)
     , _bn2(nullptr)
+    , _activation(activation)
 {
     blockargs = block_args;
     _bn_mom = 1 - globalargs.batch_norm_momentum;
@@ -163,25 +163,13 @@ MBConvBlockImpl::MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs, 
 
 torch::Tensor MBConvBlockImpl::forward(torch::Tensor inputs, double drop_connect_rate)
 {
-#ifdef USE_RELU6
-    torch::nn::ReLU6 relu6(torch::nn::ReLU6Options().inplace(true));
-#endif
     auto x = inputs;
     if (blockargs.expand_ratio != 1) {
-#ifdef USE_RELU6
-        x = relu6(_bn0->forward(_expand_conv->forward(inputs)));
-#else
-        x = swish(_bn0->forward(_expand_conv->forward(inputs)));
-#endif
-      
+        x = this->_activation(x);
     }
     auto xx = _depthwise_conv->forward(x);
-#ifdef USE_RELU6
-    x = relu6(_bn1->forward(xx));
-#else
-    x = swish(_bn1->forward(xx));
-#endif
-    
+    x = this->_activation(xx);
+
     if (has_se) {
         x = _seexpand_conv->forward(_sereduce_conv->forward(x));
     }
@@ -194,13 +182,14 @@ torch::Tensor MBConvBlockImpl::forward(torch::Tensor inputs, double drop_connect
             x = drop_connect(x, drop_connect_rate, this->is_training());
         x += inputs;
     }
-    
+
     return x;
 }
 
-EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classes)
+EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classes, ActivationFunction activation)
+    : _activation(activation)
+    , _gp(gp)
 {
-    _gp = gp;
     // stem
     auto out_channels = round_filters(32, gp);
     auto opti = torch::nn::Conv2dOptions(3, out_channels, 3).bias(false).stride(2);
@@ -243,14 +232,14 @@ EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classe
         blkno++;
     }
     // Head
-       
+
     auto in_channels = lastoutpf;
     out_channels = round_filters(1280, gp);
     _conv_head = new Conv2dStaticSamePadding(torch::nn::Conv2dOptions(in_channels, out_channels, 1 /*{1}*/).bias(false),
                                              imgsize_w,imgsize_h);
     _bn1 = torch::nn::BatchNorm2d(
             torch::nn::BatchNorm2dOptions(out_channels).momentum(gp.batch_norm_momentum).eps(gp.batch_norm_epsilon));
-    
+
         // Final linear layer
 
     _avg_pooling = torch::nn::AdaptiveAvgPool2d(1);
@@ -267,7 +256,7 @@ EfficientNetV1Impl::EfficientNetV1Impl(const GlobalParams& gp, size_t num_classe
     register_module("fc", _fc);
 }
 
-// Calls extract_features to extract features, applies final linear layer, and returns logits. 
+// Calls extract_features to extract features, applies final linear layer, and returns logits.
 torch::Tensor EfficientNetV1Impl::forward(torch::Tensor inputs)
 {
 
@@ -279,18 +268,14 @@ torch::Tensor EfficientNetV1Impl::forward(torch::Tensor inputs)
     x = _dropout->forward(x);
     return _fc(x);
 }
-// Returns output of the final convolution layer 
+// Returns output of the final convolution layer
 torch::Tensor EfficientNetV1Impl::extract_features(torch::Tensor inputs)
 {
     torch::nn::ReLU6 relu6(torch::nn::ReLU6Options().inplace(true));
     //stem
     auto y = _conv_stem->forward(inputs);
-#ifdef USE_RELU6
-    auto x = relu6(_bn0->forward(y));
-#else
-    auto x = swish(_bn0->forward(y));
-#endif
-    
+    auto x = this->_activation(y);
+
     //blocks
     int idx = 0;
     for (auto block : _blocks) {
@@ -302,9 +287,20 @@ torch::Tensor EfficientNetV1Impl::extract_features(torch::Tensor inputs)
     }
 
     // head
-#ifdef USE_RELU6
-    return relu6(_bn1->forward(_conv_head->forward(x)));
-#else
-    return swish(_bn1->forward(_conv_head->forward(x)));
-#endif
+    return this->_activation(_bn1->forward(_conv_head->forward(x)));
+}
+
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+    py::doc() = "EfficientNet implementation with Python/C++ bindings.";
+
+    py::class_<EfficientNetV1Impl>(m, "EfficientNet")
+    .def(py::init<GlobalParams, size_t, ActivationFunction>(), "Initialize EfficientNet with hyper-parameters and output class count.",
+        py::arg("params"), py::arg("num_classes"), py::arg("activation")
+    )
+    .def("forward", &EfficientNetV1Impl::forward, "EfficientNet inference forward pass from input Tensor.",
+        py::arg("inputs")
+    )
+    .def("extract_features", &EfficientNetV1Impl::extract_features,
+        py::arg("inputs")
+    );
 }

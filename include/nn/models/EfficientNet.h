@@ -1,7 +1,10 @@
-#include "stdafx.h"
 #pragma once
 
-#include "BaseModel.h"
+#include "nn/models/BaseModel.h"
+#include "nn/modules/activation.h"
+
+#include <torch/torch.h>
+
 #include <algorithm>
 #include <tuple>
 #include <random>
@@ -115,13 +118,17 @@ struct BlockArgs
     int kernel_size;
     int stride;
 };
+
 struct GlobalParams
 {
+public:
     GlobalParams() = default;
     GlobalParams(double w, double d, int64_t res, double dor)
-        : width_coefficient(w), depth_coefficient(d), image_size_w(res), image_size_h(res),dropout_rate(dor)
-    {
-    }
+        : width_coefficient(w)
+        , depth_coefficient(d)
+        , image_size_w(res)
+        , image_size_h(res)
+        , dropout_rate(dor) {}
     GlobalParams(const GlobalParams&) = default;
     double batch_norm_momentum = 0.99;
     double batch_norm_epsilon = 0.001;
@@ -134,13 +141,33 @@ struct GlobalParams
     int64_t image_size_w, image_size_h;
 };
 
+PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+    py::class_<GlobalParams>(m, "GlobalParams", py::dynamic_attr())
+    .def(py::init<>())
+    .def_readwrite("batch_norm_momentum",   &GlobalParams::batch_norm_momentum)
+    .def_readwrite("batch_norm_epsilon",    &GlobalParams::batch_norm_epsilon)
+    .def_readwrite("depth_coefficient",     &GlobalParams::depth_coefficient)
+    .def_readwrite("batch_norm_momentum",   &GlobalParams::batch_norm_momentum)
+    .def_readwrite("width_coefficient",     &GlobalParams::width_coefficient)
+    .def_readwrite("dropout_rate",          &GlobalParams::dropout_rate)
+    .def_readwrite("drop_connect_rate",     &GlobalParams::drop_connect_rate)
+    .def_readwrite("depth_divisor",         &GlobalParams::depth_divisor)
+    .def_readwrite("min_depth",             &GlobalParams::min_depth);
+}
+
 struct MBConvBlockImpl : public torch::nn::Module
 {
 public:
     MBConvBlockImpl() = default;
-    MBConvBlockImpl(BlockArgs block_args, GlobalParams globalargs, int64_t imgsize_w, int64_t imgsize_h);
+    MBConvBlockImpl(
+        BlockArgs block_args,
+        GlobalParams globalargs,
+        int64_t imgsize_w,
+        int64_t imgsize_h,
+        ActivationFunction activation);
 
     BlockArgs blockargs;
+    ActivationFunction _activation = swish;
     double _bn_mom;
     double _bn_eps;
     bool has_se = false;
@@ -162,8 +189,9 @@ struct EfficientNetV1Impl : torch::nn::Module
 {
     //bool aux_logits, transform_input;
     EfficientNetV1Impl() = default;
-    EfficientNetV1Impl(const GlobalParams& gp, size_t num_classes = 2);
+    EfficientNetV1Impl(const GlobalParams& gp, size_t num_classes = 2, ActivationFunction activation = swish);
     GlobalParams _gp;
+    ActivationFunction _activation = swish;
     Conv2dStaticSamePadding *_conv_stem, *_conv_head;
     torch::nn::AdaptiveAvgPool2d _avg_pooling = nullptr;
     torch::nn::Dropout _dropout = nullptr;
@@ -189,7 +217,11 @@ TORCH_MODULE(EfficientNetV1);
 class EfficientNet : public BaseModel, public EfficientNetV1Impl
 {
 public:
-    EfficientNet(GlobalParams gp, size_t nboutputs) : EfficientNetV1Impl(gp, nboutputs) {}
+    EfficientNet(
+        GlobalParams gp,
+        size_t nboutputs,
+        ActivationFunction activation = swish
+    ) : EfficientNetV1Impl(gp, nboutputs, activation) {}
     virtual void resizeLastLayer(size_t outputCount) {}
     virtual torch::Tensor forward(torch::Tensor x)
     {

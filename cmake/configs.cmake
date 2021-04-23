@@ -14,7 +14,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS On)
 
 # add cuda definition WITH_CUDA which is common across CMake packages
 # (note: corresponding libraries must also have been compiled with CUDA support)
-option(CONFIG_WITH_CUDA "Enable cuda support" ON)
-if(${CONFIG_WITH_CUDA})
+option(PROJECT_WITH_CUDA "Enable CUDA support" ON)
+if(${PROJECT_WITH_CUDA})
 	add_definitions(-DWITH_CUDA)
 endif()
