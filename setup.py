@@ -128,6 +128,7 @@ with open("version.txt") as ver:
 
 # package will be available as import with that name
 # any submodules are defined on the C++ side by pybind11
+# extension name must match with "python_bindings.cpp" and "CMakeLists.txt"
 TORCH_EXTENSION_NAME = "efficientnet_libtorch"
 setup(
     name=TORCH_EXTENSION_NAME,

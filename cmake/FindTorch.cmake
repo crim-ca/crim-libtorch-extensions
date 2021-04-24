@@ -6,6 +6,7 @@
 # This will define the following variables:
 #
 #   TORCH_FOUND					- True if the system has the Torch library
+#	TORCH_ROOT					- Root directory of found library
 #   TORCH_INCLUDE_DIRECTORIES   - The include directories for torch
 #   TORCH_LIBRARIES 			- Static libraries to link against
 #	TORCH_DLLS					- Dynamic libraries for runtime execution
@@ -13,6 +14,15 @@
 # and the following imported targets::
 #
 #     Torch
+# 
+# To locate installation path of Torch, following variables are employed
+#
+#	TORCH_INSTALL_PREFIX
+#	TORCH_DIR
+#	Torch_DIR
+#
+# First match (in that order) is used. 
+#
 
 cmake_minimum_required(VERSION 3.6.0 FATAL_ERROR)
 
@@ -28,6 +38,7 @@ endif()
 #   using cmake config
 find_file(TORCH_CMAKE_CFG TorchConfig.cmake
 	PATHS
+		"${TORCH_INSTALL_PREFIX}"
 		"${TORCH_DIR}"
 		"${TORCH_DIR}/share/cmake/Torch"
 		"${TORCH_DIR}/cmake/Torch"
@@ -170,15 +181,21 @@ endif()
 list(FILTER TORCH_LIBRARIES EXCLUDE REGEX ".*NOTFOUND")
 list(FILTER TORCH_DLLS EXCLUDE REGEX ".*NOTFOUND")
 
+if(EXISTS ${TORCH_INCLUDE_DIR})
+	get_filename_component(TORCH_ROOT ${TORCH_INCLUDE_DIR} DIRECTORY)
+endif()
+
 include(${CMAKE_ROOT}/Modules/FindPackageHandleStandardArgs.cmake)
 if (NOT EXISTS ${TORCH_LIBRARY})
-    message(WARNING "Could not find Torch library. Define TORCH_DIR with install location.")
+    message(WARNING "Could not find Torch library. Define TORCH_DIR or TORCH_INSTALL_PREFIX with install location.")
 endif()
 find_package_handle_standard_args(Torch
     REQUIRED_VARS
+		TORCH_ROOT
         TORCH_LIBRARY
         TORCH_INCLUDE_DIR
     VERSION_VAR TORCH_VERSION
 )
+message(DEBUG "Torch root: ${TORCH_ROOT}")
 message(DEBUG "Torch libs: ${TORCH_LIBRARIES}")
 message(DEBUG "Torch dlls: ${TORCH_DLLS}")

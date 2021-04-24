@@ -5,7 +5,8 @@
 #include "nn/modules/activation.h"
 
 
-PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
+// module name must match "setup.py" and "CMakeLists.txt"
+PYBIND11_MODULE(efficientnet_libtorch, m) {
     py::doc("EfficientNet PyTorch extension with Python/C++ bindings.");
 
     py::module_ a = m.def_submodule("activation", "Activation functions.");
