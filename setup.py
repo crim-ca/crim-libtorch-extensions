@@ -26,7 +26,7 @@ class CMakeBuild(build_ext):
 
     def __init__(self, *args, **kwargs):
         super(CMakeBuild, self).__init__(*args, **kwargs)
-        self.python_exe = subprocess.check_output(["which", "python"]).decode().strip()
+        self.python_exe = sys.executable
         self.pytorch_dir = None
         self.cmake = None
 
@@ -113,17 +113,18 @@ class CMakeBuild(build_ext):
 
         if not os.path.exists(build_dir):
             os.makedirs(build_dir)
-        cwd = os.getcwd()
-        os.chdir(build_dir)
-        self.spawn([self.cmake, " ".join(ext.sources)] + cmake_args)
-        jobs = os.getenv("CMAKE_JOBS", multiprocessing.cpu_count())
-        cmd = [self.cmake, "--build", build_dir, "--", "-j{}".format(jobs)]
+        env = os.environ.copy()
+        # configure/generate
+        cmd = [self.cmake, " ".join(ext.sources)] + cmake_args
+        subprocess.check_call(cmd, cwd=build_dir, env=env)
+        # compile
         if not self.dry_run:
-            self.spawn(cmd)
-        os.chdir(cwd)
+            jobs = os.getenv("CMAKE_JOBS", multiprocessing.cpu_count())
+            cmd = [self.cmake, "--build", build_dir, "--", "-j{}".format(jobs)]
+            subprocess.check_call(cmd, cwd=build_dir, env=env)
 
 
-with open("version.txt") as ver:
+with open("VERSION") as ver:
     version = ver.readline().strip()
 
 # package will be available as import with that name
