@@ -93,7 +93,7 @@ class CMakeBuild(build_ext):
                       "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
                       "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
                       "-DTORCH_DIR={}".format(self.pytorch_dir),
-                      "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # for kenlm - avoid seg fault
+                      # "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # should be set by FindTorch
                       # "-DPYTHON_EXECUTABLE=".format(sys.executable),
                       ]
 
