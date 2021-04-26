@@ -36,7 +36,7 @@ torch::Tensor drop_connect(torch::Tensor inputs, double p, bool training)
 }
 
 
-int round_filters(int filters, EfficientNetParams p)
+int round_filters(int filters, EfficientNetOptions p)
 {
     auto multiplier = p.width_coefficient;
     if (multiplier < 0)
@@ -56,7 +56,7 @@ int round_filters(int filters, EfficientNetParams p)
 // if width_coefficient==10: expected values are 32 64 88 112 128 152 208
 void test_round_filters()
 {
-    EfficientNetParams p(1, 1, 224, 0.2);
+    EfficientNetOptions p(1, 1, 224, 0.2);
     p.width_coefficient = 10;
     auto a = {3, 6, 9, 11, 13, 15, 21};
     for (auto ai : a) {
@@ -66,7 +66,7 @@ void test_round_filters()
 
 // FIXME: move to utils
 // Round number of filters based on depth multiplier.
-int round_repeats(int repeats, EfficientNetParams p)
+int round_repeats(int repeats, EfficientNetOptions p)
 {
     auto multiplier = p.depth_coefficient;
     if (multiplier < 0)
@@ -88,7 +88,7 @@ int round_repeats(int repeats, EfficientNetParams p)
 */
 MBConvBlockImpl::MBConvBlockImpl(
     BlockArgs block_args,
-    EfficientNetParams params,
+    EfficientNetOptions params,
     int64_t _imgsize_w,
     int64_t _imgsize_h)
     : /*_depthwise_conv(nullptr), _expand_conv(nullptr), _project_conv(nullptr),*/ _bn0(nullptr)
@@ -185,7 +185,7 @@ torch::Tensor MBConvBlockImpl::forward(torch::Tensor inputs, double drop_connect
     return x;
 }
 
-EfficientNetV1Impl::EfficientNetV1Impl(const EfficientNetParams& params, size_t num_classes)
+EfficientNetV1Impl::EfficientNetV1Impl(const EfficientNetOptions& params, size_t num_classes)
     : _params(params)
 {
     // stem

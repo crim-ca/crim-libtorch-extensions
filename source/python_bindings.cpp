@@ -23,7 +23,7 @@ PYBIND11_MODULE(efficientnet_core, m) {
 
     py::module_ e = m.def_submodule("efficientnet", "EfficientNet implementation.");
 
-    py::class_<EfficientNetParams>(/*e*/m, "EfficientNetParams", py::dynamic_attr())
+    py::class_<EfficientNetOptions>(/*e*/m, "EfficientNetOptions", py::dynamic_attr())
         .def(py::init<double, double, int64_t, double, double, double, double, int, int, ActivationFunction>(),
             "Initialize EfficientNet hyper-parameters with provided values.",
             py::arg("width_coefficient"),
@@ -37,23 +37,23 @@ PYBIND11_MODULE(efficientnet_core, m) {
             py::arg("min_depth") = -1,
             py::arg("activation") = swish_func
         )
-        .def_readwrite("width_coefficient",     &EfficientNetParams::width_coefficient)
-        .def_readwrite("depth_coefficient",     &EfficientNetParams::depth_coefficient)
-        .def("image_size",                      &EfficientNetParams::image_size)
-        .def_readwrite("image_size_w",          &EfficientNetParams::image_size_w)
-        .def_readwrite("image_size_h",          &EfficientNetParams::image_size_h)
-        .def_readwrite("dropout_rate",          &EfficientNetParams::dropout_rate)
-        .def_readwrite("dropout_rate",          &EfficientNetParams::dropout_rate)
-        .def_readwrite("drop_connect_rate",     &EfficientNetParams::drop_connect_rate)
-        .def_readwrite("batch_norm_momentum",   &EfficientNetParams::batch_norm_momentum)
-        .def_readwrite("batch_norm_epsilon",    &EfficientNetParams::batch_norm_epsilon)
-        .def_readwrite("depth_divisor",         &EfficientNetParams::depth_divisor)
-        .def_readwrite("min_depth",             &EfficientNetParams::min_depth)
-        .def_readwrite("activation",            &EfficientNetParams::activation)
+        .def_readwrite("width_coefficient",     &EfficientNetOptions::width_coefficient)
+        .def_readwrite("depth_coefficient",     &EfficientNetOptions::depth_coefficient)
+        .def("image_size",                      &EfficientNetOptions::image_size)
+        .def_readwrite("image_size_w",          &EfficientNetOptions::image_size_w)
+        .def_readwrite("image_size_h",          &EfficientNetOptions::image_size_h)
+        .def_readwrite("dropout_rate",          &EfficientNetOptions::dropout_rate)
+        .def_readwrite("dropout_rate",          &EfficientNetOptions::dropout_rate)
+        .def_readwrite("drop_connect_rate",     &EfficientNetOptions::drop_connect_rate)
+        .def_readwrite("batch_norm_momentum",   &EfficientNetOptions::batch_norm_momentum)
+        .def_readwrite("batch_norm_epsilon",    &EfficientNetOptions::batch_norm_epsilon)
+        .def_readwrite("depth_divisor",         &EfficientNetOptions::depth_divisor)
+        .def_readwrite("min_depth",             &EfficientNetOptions::min_depth)
+        .def_readwrite("activation",            &EfficientNetOptions::activation)
     ;
-/*
+
     py::class_<EfficientNet>(e, "EfficientNet")
-        .def(py::init<EfficientNetParams, size_t>(),
+        .def(py::init<EfficientNetOptions, size_t>(),
             "Initialize EfficientNet with hyper-parameters, output class count and activation function.",
             py::arg("params"), py::arg("num_classes") = 2  // FIXME: move num_classes to params
         )
@@ -63,7 +63,7 @@ PYBIND11_MODULE(efficientnet_core, m) {
         .def("extract_features", &EfficientNet::extract_features,
             py::arg("inputs")
         )
-    ;*/
+    ;
 }
 
 #endif

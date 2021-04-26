@@ -119,11 +119,11 @@ struct BlockArgs
     int stride;
 };
 
-struct EfficientNetParams
+struct EfficientNetOptions
 {
 public:
-    EfficientNetParams() = default;
-    EfficientNetParams(double _width_coefficient,
+    EfficientNetOptions() = default;
+    EfficientNetOptions(double _width_coefficient,
                        double _depth_coefficient,
                        int64_t _image_size,
                        double _dropout_rate,
@@ -145,13 +145,13 @@ public:
         , batch_norm_epsilon(_batch_norm_epsilon)
         , depth_divisor(_depth_divisor)
         , min_depth(_min_depth)
-        , activation(_activation) 
+        , activation(_activation)
     {}
-    
-    EfficientNetParams(const EfficientNetParams&) = default;
+
+    EfficientNetOptions(const EfficientNetOptions&) = default;
 
     void image_size(int64_t _image_size) { image_size_w = _image_size; image_size_h = image_size_h; }
-    
+
     double width_coefficient = -1;
     double depth_coefficient = -1;
     double dropout_rate = 0.2;
@@ -170,7 +170,7 @@ public:
     MBConvBlockImpl() = default;
     MBConvBlockImpl(
         BlockArgs block_args,
-        EfficientNetParams params,
+        EfficientNetOptions params,
         int64_t imgsize_w,
         int64_t imgsize_h);
 
@@ -178,7 +178,7 @@ public:
 
 private:
     BlockArgs _block_args;
-    EfficientNetParams _params;
+    EfficientNetOptions _params;
     double _bn_mom;
     double _bn_eps;
     bool has_se = false;
@@ -198,8 +198,8 @@ struct EfficientNetV1Impl : torch::nn::Module
 {
     //bool aux_logits, transform_input;
     EfficientNetV1Impl() = default;
-    EfficientNetV1Impl(const EfficientNetParams& params, size_t num_classes = 2);
-    EfficientNetParams _params;
+    EfficientNetV1Impl(const EfficientNetOptions& params, size_t num_classes = 2);
+    EfficientNetOptions _params;
     Conv2dStaticSamePadding *_conv_stem, *_conv_head;
     torch::nn::AdaptiveAvgPool2d _avg_pooling = nullptr;
     torch::nn::Dropout _dropout = nullptr;
@@ -226,7 +226,7 @@ class EfficientNet : public BaseModel, public EfficientNetV1Impl
 {
 public:
     EfficientNet(
-        EfficientNetParams params,
+        EfficientNetOptions params,
         size_t nboutputs
     ) : EfficientNetV1Impl(params, nboutputs) {}
     virtual void resizeLastLayer(size_t outputCount) {}
@@ -241,40 +241,40 @@ public:
 class EfficientNetB0 : public EfficientNet
 {
 public:
-    EfficientNetB0(size_t nboutputs) : EfficientNet(EfficientNetParams{1.0, 1.0, 224, 0.2}, nboutputs) {}
+    EfficientNetB0(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.0, 1.0, 224, 0.2}, nboutputs) {}
 };
 class EfficientNetB3 : public EfficientNet
 {
 public:
-    EfficientNetB3(size_t nboutputs) : EfficientNet(EfficientNetParams{1.2, 1.4, 300, 0.3}, nboutputs) {}
+    EfficientNetB3(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.2, 1.4, 300, 0.3}, nboutputs) {}
 };
 class EfficientNetB2 : public EfficientNet
 {
 public:
-    EfficientNetB2(size_t nboutputs) : EfficientNet(EfficientNetParams{1.1, 1.2, 260, 0.3}, nboutputs) {}
+    EfficientNetB2(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.1, 1.2, 260, 0.3}, nboutputs) {}
 };
 class EfficientNetB1 : public EfficientNet
 {
 public:
-    EfficientNetB1(size_t nboutputs) : EfficientNet(EfficientNetParams{1.0, 1.1, 240, 0.2}, nboutputs) {}
+    EfficientNetB1(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.0, 1.1, 240, 0.2}, nboutputs) {}
 };
 class EfficientNetB4 : public EfficientNet
 {
 public:
-    EfficientNetB4(size_t nboutputs) : EfficientNet(EfficientNetParams{1.4, 1.8, 380, 0.4}, nboutputs) {}
+    EfficientNetB4(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.4, 1.8, 380, 0.4}, nboutputs) {}
 };
 class EfficientNetB5 : public EfficientNet
 {
 public:
-    EfficientNetB5(size_t nboutputs) : EfficientNet(EfficientNetParams{1.6, 2.2, 456, 0.4}, nboutputs) {}
+    EfficientNetB5(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.6, 2.2, 456, 0.4}, nboutputs) {}
 };
 class EfficientNetB6 : public EfficientNet
 {
 public:
-    EfficientNetB6(size_t nboutputs) : EfficientNet(EfficientNetParams{1.8, 2.6, 528, 0.5}, nboutputs) {}
+    EfficientNetB6(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.8, 2.6, 528, 0.5}, nboutputs) {}
 };
 class EfficientNetB7 : public EfficientNet
 {
 public:
-    EfficientNetB7(size_t nboutputs) : EfficientNet(EfficientNetParams{2.0, 3.1, 600, 0.5}, nboutputs) {}
+    EfficientNetB7(size_t nboutputs) : EfficientNet(EfficientNetOptions{2.0, 3.1, 600, 0.5}, nboutputs) {}
 };
