@@ -20,4 +20,7 @@
 
 // torch headers
 #include <torch/torch.h>
+
+#ifndef NO_PYTHON
 #include <torch/extension.h>
+#endif

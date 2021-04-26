@@ -1,8 +1,8 @@
 #include "stdafx.h"  // includes pytorch and extensions
 #pragma hdrstop
 
+#ifndef NO_PYTHON
 #include <pybind11/pybind11.h>
-
 namespace py = pybind11;
 
 #include "nn/models/EfficientNet.h"
@@ -23,14 +23,14 @@ PYBIND11_MODULE(efficientnet_core, m) {
     py::class_<EfficientNetParams>(/*e*/m, "EfficientNetParams", py::dynamic_attr())
         .def(py::init<double, double, int64_t, double, double, double, double, int, int, ActivationFunction>(),
             "Initialize EfficientNet hyper-parameters with provided values.",
-            py::arg("width_coefficient"), 
-            py::arg("depth_coefficient"), 
-            py::arg("image_size"), 
-            py::arg("dropout_rate"), 
-            py::arg("drop_connect_rate") = 0.2, 
-            py::arg("batch_norm_momentum") = 0.99, 
-            py::arg("batch_norm_epsilon") = 0.001, 
-            py::arg("depth_divisor") = 8, 
+            py::arg("width_coefficient"),
+            py::arg("depth_coefficient"),
+            py::arg("image_size"),
+            py::arg("dropout_rate"),
+            py::arg("drop_connect_rate") = 0.2,
+            py::arg("batch_norm_momentum") = 0.99,
+            py::arg("batch_norm_epsilon") = 0.001,
+            py::arg("depth_divisor") = 8,
             py::arg("min_depth") = -1,
             py::arg("activation") = swish_func
         )
@@ -50,7 +50,7 @@ PYBIND11_MODULE(efficientnet_core, m) {
     ;
 /*
     py::class_<EfficientNet>(e, "EfficientNet")
-        .def(py::init<EfficientNetParams, size_t>(), 
+        .def(py::init<EfficientNetParams, size_t>(),
             "Initialize EfficientNet with hyper-parameters, output class count and activation function.",
             py::arg("params"), py::arg("num_classes") = 2  // FIXME: move num_classes to params
         )
@@ -62,3 +62,5 @@ PYBIND11_MODULE(efficientnet_core, m) {
         )
     ;*/
 }
+
+#endif
