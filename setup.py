@@ -28,6 +28,7 @@ class CMakeBuild(build_ext):
         super(CMakeBuild, self).__init__(*args, **kwargs)
         self.python_exe = sys.executable
         self.pytorch_dir = None
+        self.pybind11_dir = None
         self.cmake = None
 
     @property
@@ -47,7 +48,9 @@ class CMakeBuild(build_ext):
         """
         Attempt finding precompiled Torch with ``TORCH_DIR``, ``TORCH_LIBRARY`` or revert back to PyPI package install.
         """
-        pytorch_dir = os.getenv("TORCH_DIR")
+        pytorch_dir = os.getenv("PYTORCH_DIR")
+        if not pytorch_dir:
+            pytorch_dir = os.getenv("TORCH_DIR")
         pytorch_lib = os.getenv("TORCH_LIBRARY")
         pytorch_lib_path = "lib/libtorch.so" if platform.system() != "Windows" else "lib/x64/torch.lib"
         if pytorch_dir and os.path.isdir(pytorch_dir) and os.path.isfile(os.path.join(pytorch_dir, pytorch_lib_path)):
@@ -68,6 +71,14 @@ class CMakeBuild(build_ext):
         self.announce("Found PyTorch dir: {}".format(pytorch_dir))
         return pytorch_dir
 
+    def find_pybind_dir(self):
+        pybind_dir =  os.getenv("PYBIND11_DIR", "")
+        if not os.path.isdir(pybind_dir):
+            raise RuntimeError("Library pybind11 required but not valid: [{}]".format(pybind_dir))
+        self.announce("Found PyBind11 dir: {}".format(pybind_dir))
+        self.pybind11_dir = pybind_dir
+        return self.pybind11_dir
+
     def run(self):
         try:
             _ = subprocess.check_output([self.cmake, "--version"])
@@ -76,6 +87,7 @@ class CMakeBuild(build_ext):
                                ", ".join(ext.name for ext in self.extensions))
 
         self.pytorch_dir = self.find_torch_dir()
+        self.pybind11_dir = self.find_pybind_dir()
         for ext in self.extensions:
             self.build_cmake(ext)
 
@@ -91,7 +103,9 @@ class CMakeBuild(build_ext):
         cmake_args = ["-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(ext_dir),
                       # "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
                       "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
+                      "-DPROJECT_WITH_PYTHON=ON",
                       "-DTORCH_DIR={}".format(self.pytorch_dir),
+                      "-DPYBIND11_DIR={}".format(self.pybind11_dir),
                       # "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # should be set by FindTorch
                       ]
 
@@ -114,7 +128,8 @@ class CMakeBuild(build_ext):
         env = os.environ.copy()
         # configure/generate
         src = os.path.abspath(".")
-        cmd = [self.cmake, src] + cmake_args
+        cmd = [self.cmake, "--log-level=DEBUG", src] + cmake_args
+        self.announce("Configure with CMake:\n{}".format(cmd))
         subprocess.check_call(cmd, cwd=build_dir, env=env)
         # compile
         if not self.dry_run:
@@ -139,7 +154,7 @@ with open("requirements.txt") as r:
 # package will be available as import with that name
 # any submodules are defined on the C++ side by pybind11
 # extension name must match with "python_bindings.cpp" and "CMakeLists.txt"
-TORCH_EXTENSION_NAME = "efficientnet_libtorch"
+TORCH_EXTENSION_NAME = "efficientnet_core"
 setup(
     name=TORCH_EXTENSION_NAME,
     version=VERSION,
@@ -150,7 +165,7 @@ setup(
     maintainer_email="francis.charette-migneault@crim.ca",
     contact="CRIM",
     contact_email="info@crim.ca",
-    # license="",  # FIXME: pick a license for publish
+    # license="",  # FIXME: pick a license for publish, also adjust classifier below
     keywords="PyTorch, libtorch, EfficientNet",
     url="https://www.crim.ca/stash/scm/visi/efficientnet-libtorch.git",
     zip_safe=False,
@@ -185,6 +200,7 @@ setup(
         "Intended Audience :: Developers",
         "Intended Audience :: Education"
         "Intended Audience :: Science/Research",
+        # "License :: OSI Approved :: ??? License"   # MIT or Apache ?,
         "Natural Language :: English",
         # to validate Windows
         # "Operating System :: Microsoft :: Windows",

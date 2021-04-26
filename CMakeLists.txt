@@ -6,7 +6,7 @@ if("${PROJECT_SOLUTION_NAME}" STREQUAL "")
 	message(FATAL_ERROR "Solution name cannot be empty")
 endif()
 #mark_as_advanced(PROJECT_SOLUTION_NAME)
-project(efficientnet_libtorch LANGUAGES CXX)
+project(efficientnet_core LANGUAGES CXX)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake" FORCE)
 include(cmake/configs.cmake)
@@ -70,7 +70,6 @@ list(APPEND CMAKE_MESSAGE_INDENT "  ")
 list(POP_BACK CMAKE_MESSAGE_INDENT)
 set(PROJECT_LIBRARY_TYPE "SHARED" CACHE STRING "Library type to build.")
 set_property(CACHE PROJECT_LIBRARY_TYPE PROPERTY STRINGS SHARED STATIC)
-add_library(${PROJECT_NAME} ${PROJECT_LIBRARY_TYPE} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 if(MSVC)
     source_group(TREE "${${PROJECT_NAME}_INCLUDE_DIR}" PREFIX "Headers" FILES ${PROJECT_HEADERS})
     source_group(TREE "${${PROJECT_NAME}_SOURCES_DIR}" PREFIX "Sources" FILES ${PROJECT_SOURCES})
@@ -93,11 +92,38 @@ list(APPEND INCLUDE_DIRS "${TORCH_INCLUDE_DIR}")
 list(APPEND EXTERNAL_LIBS "${TORCH_LIBRARIES}")
 list(APPEND EXTERNAL_DLLS "${TORCH_DLLS}")
 list(APPEND EXTERNAL_DEPS "torch")
+
+# depending on Python bindinds or not, create library or module
 option(PROJECT_WITH_PYTHON "Enable Python support. Must match compilation of Torch library." ON)
+message(DEBUG "WITH Python? ${PROJECT_WITH_PYTHON}")
 if(${PROJECT_WITH_PYTHON})
-    find_package(Python COMPONENTS Development)
+    # find Python and pybind required to generate bindings
+    find_package(Python COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE})
     list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})
     list(APPEND EXTERNAL_LIBS ${Python_LIBRARIES})
+    
+    if(NOT EXISTS ${PYBIND11_DIR})
+        message(FATAL "Must set PYBIND11_DIR")
+    endif()
+    # add_subdirectory(${PYBIND11_DIR} ${CMAKE_BINARY_DIR}/pybind11 EXCLUDE_FROM_ALL)
+    find_package(pybind11 COMPONENTS HINTS ${PYBIND11_DIR})
+
+    message(DEBUG "Python Headers:" ${Python_INCLUDE_DIRS})
+    message(DEBUG "PyBind Headers:" ${pybind11_INCLUDE_DIRS})
+
+    # let pybind define all the required targets and libs references 
+    # it setups additional items that will no correctly install the python package if otherwise using 'add_library'
+    pybind11_add_module(${PROJECT_NAME} ${TORCH_INCLUDE_DIR} ${pybind11_INCLUDE_DIRS} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
+    # target_include_directories(${PROJECT_NAME} ${Python_INCLUDE_DIRS} ${pybind11_INCLUDE_DIRS})
+
+    # patch missing definitions between pybind and pytorch
+    # (https://github.com/pytorch/pytorch/issues/38122)
+    find_library(TORCH_PYTHON_LIBRARY torch_python PATHS "${TORCH_INSTALL_PREFIX}/lib")
+    list(APPEND EXTERNAL_LIBS ${TORCH_PYTHON_LIBRARY})
+
+else()
+    # no bindings added if compiled directly for use in C++ only
+    add_library(${PROJECT_NAME} ${PROJECT_LIBRARY_TYPE} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 endif()
 
 # library
@@ -110,7 +136,6 @@ message(DEBUG "Include libs:  " "${LIBRARIES}")
 message(DEBUG "External libs: " "${EXTERNAL_LIBS}")
 target_include_directories(${PROJECT_NAME} PUBLIC "${INCLUDE_DIRS}" "${${PROJECT_NAME}_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC "${EXTERNAL_LIBS}")
-set_default_target_properties(${PROJECT_NAME})
 
 # installation
 include(GNUInstallDirs)

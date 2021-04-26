@@ -1,12 +1,16 @@
 #include "stdafx.h"  // includes pytorch and extensions
 #pragma hdrstop
 
+#include <pybind11/pybind11.h>
+
+namespace py = pybind11;
+
 #include "nn/models/EfficientNet.h"
 #include "nn/modules/activation.h"
 
 
 // module name must match "setup.py" and "CMakeLists.txt"
-PYBIND11_MODULE(efficientnet_libtorch, m) {
+PYBIND11_MODULE(efficientnet_core, m) {
     py::doc("EfficientNet PyTorch extension with Python/C++ bindings.");
 
     py::module_ a = m.def_submodule("activation", "Activation functions.");
@@ -16,7 +20,7 @@ PYBIND11_MODULE(efficientnet_libtorch, m) {
 
     py::module_ e = m.def_submodule("efficientnet", "EfficientNet implementation.");
 
-    py::class_<EfficientNetParams>(e, "EfficientNetParams", py::dynamic_attr())
+    py::class_<EfficientNetParams>(/*e*/m, "EfficientNetParams", py::dynamic_attr())
         .def(py::init<double, double, int64_t, double, double, double, double, int, int, ActivationFunction>(),
             "Initialize EfficientNet hyper-parameters with provided values.",
             py::arg("width_coefficient"), 

@@ -1,6 +1,6 @@
 MAKEFILE_NAME := $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 APP_ROOT      := $(abspath $(lastword $(MAKEFILE_NAME))/..)
-APP_NAME	  := efficientnet_libtorch
+APP_NAME	  := EfficientNet LibTorch (C++/Python)
 
 .DEFAULT_GOAL := help
 all: help
