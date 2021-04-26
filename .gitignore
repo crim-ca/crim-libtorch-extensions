@@ -9,6 +9,7 @@
 *.egg-info/
 **/__pycache__/
 build/
+dist/
 install/
 
 ## External module common locations

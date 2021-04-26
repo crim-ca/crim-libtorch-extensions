@@ -6,7 +6,7 @@ if("${PROJECT_SOLUTION_NAME}" STREQUAL "")
 	message(FATAL_ERROR "Solution name cannot be empty")
 endif()
 #mark_as_advanced(PROJECT_SOLUTION_NAME)
-project("${PROJECT_SOLUTION_NAME}" LANGUAGES CXX)
+project(efficientnet_libtorch LANGUAGES CXX)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake" FORCE)
 include(cmake/configs.cmake)
@@ -110,6 +110,7 @@ message(DEBUG "Include libs:  " "${LIBRARIES}")
 message(DEBUG "External libs: " "${EXTERNAL_LIBS}")
 target_include_directories(${PROJECT_NAME} PUBLIC "${INCLUDE_DIRS}" "${${PROJECT_NAME}_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC "${EXTERNAL_LIBS}")
+set_default_target_properties(${PROJECT_NAME})
 
 # installation
 include(GNUInstallDirs)
