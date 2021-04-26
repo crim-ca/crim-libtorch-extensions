@@ -101,7 +101,7 @@ if(${PROJECT_WITH_PYTHON})
     find_package(Python COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE})
     list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})
     list(APPEND EXTERNAL_LIBS ${Python_LIBRARIES})
-    
+
     if(NOT EXISTS ${PYBIND11_DIR})
         message(FATAL "Must set PYBIND11_DIR")
     endif()
@@ -111,7 +111,7 @@ if(${PROJECT_WITH_PYTHON})
     message(DEBUG "Python Headers:" ${Python_INCLUDE_DIRS})
     message(DEBUG "PyBind Headers:" ${pybind11_INCLUDE_DIRS})
 
-    # let pybind define all the required targets and libs references 
+    # let pybind define all the required targets and libs references
     # it setups additional items that will no correctly install the python package if otherwise using 'add_library'
     pybind11_add_module(${PROJECT_NAME} ${TORCH_INCLUDE_DIR} ${pybind11_INCLUDE_DIRS} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
     # target_include_directories(${PROJECT_NAME} ${Python_INCLUDE_DIRS} ${pybind11_INCLUDE_DIRS})
@@ -120,6 +120,8 @@ if(${PROJECT_WITH_PYTHON})
     # (https://github.com/pytorch/pytorch/issues/38122)
     find_library(TORCH_PYTHON_LIBRARY torch_python PATHS "${TORCH_INSTALL_PREFIX}/lib")
     list(APPEND EXTERNAL_LIBS ${TORCH_PYTHON_LIBRARY})
+
+    remove_definitions(-DNO_PYTHON)
 
 else()
     # no bindings added if compiled directly for use in C++ only

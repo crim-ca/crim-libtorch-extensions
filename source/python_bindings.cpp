@@ -1,7 +1,10 @@
 #include "stdafx.h"  // includes pytorch and extensions
 #pragma hdrstop
 
-#ifndef NO_PYTHON
+#ifdef NO_PYTHON
+#warning efficientnet python_binding included without python support
+
+#else
 #include <pybind11/pybind11.h>
 namespace py = pybind11;
 
