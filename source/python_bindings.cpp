@@ -52,18 +52,37 @@ PYBIND11_MODULE(efficientnet_core, m) {
         .def_readwrite("activation",            &EfficientNetOptions::activation)
     ;
 
-    py::class_<EfficientNet>(e, "EfficientNet")
-        .def(py::init<EfficientNetOptions, size_t>(),
+    /*
+        Because PyTorch uses some templates to facilitate the use of shared_ptr using a ModuleWrapper
+        (i.e.: when calling PYTORCH_MODULE(Module) to generate from ModuleImpl), we must employ their
+        binding function instead of plain py::class_. Otherwise pointer references would be missing and
+        template generation will fail due to missing (or rather mismatching) constructors.
+
+        See details in:
+            https://github.com/pytorch/pytorch/blob/master/torch/csrc/api/include/torch/python.h
+    */
+    //py::class_<EfficientNet>(e, "EfficientNet")  // normally
+    torch::python::bind_module<EfficientNet>(e, "EfficientNet")  // using pytorch's binding
+        .def(py::init<const EfficientNetOptions&, size_t>(),
             "Initialize EfficientNet with hyper-parameters, output class count and activation function.",
             py::arg("params"), py::arg("num_classes") = 2  // FIXME: move num_classes to params
         )
-        .def("forward", &EfficientNet::forward, "EfficientNet inference forward pass from input Tensor.",
+        /*.def("forward", &EfficientNet::forward, "EfficientNet inference forward pass from input Tensor.",
             py::arg("inputs")
         )
         .def("extract_features", &EfficientNet::extract_features,
             py::arg("inputs")
+        )*/
+    ;
+
+/*
+    py::class_<EfficientNetB0>(e, "EfficientNetB0")
+        .def(py::init<size_t>(),
+            "initialize",
+            py::arg("num_classes")
         )
     ;
+    */
 }
 
 #endif

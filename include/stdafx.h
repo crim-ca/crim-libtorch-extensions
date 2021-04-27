@@ -23,4 +23,5 @@
 
 #ifndef NO_PYTHON
 #include <torch/extension.h>
+#include <torch/csrc/utils/pybind.h>
 #endif
