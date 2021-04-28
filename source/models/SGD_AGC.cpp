@@ -100,7 +100,13 @@ Tensor SGDAGC::step(LossClosure closure)
         auto clipping = options.clipping();
 
         for (auto& p : group.params()) {
+            if (!p.grad().defined()) {
+                continue;
+            }
+
+            //std::cout << p << std::endl;
             auto param_norm = torch::max(unitwise_norm(p.detach()), torch::tensor(eps).to(p.device()));
+            
             auto grad_norm = unitwise_norm(p.grad().detach());
             auto max_norm = param_norm * clipping;
             auto trigger = grad_norm > max_norm;
