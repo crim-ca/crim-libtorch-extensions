@@ -1,10 +1,14 @@
-#include "models/NFNet.h"
+#include <stdafx.h>
+#include <string>
+#include "models/nfnet.h"
 
+
+//#include "Base.h"
 //namespace vision {
   //  namespace models {
-    //    namespace _nfnetimpl {
-
-            torch::nn::Conv2d conv3x3(
+        namespace _nfnetimpl {
+            // TODO: allow different base_conv
+            ScaledStdConv2d myconv3x3(
                 int64_t in,
                 int64_t out,
                 int64_t stride,
@@ -12,14 +16,14 @@
                 torch::nn::Conv2dOptions O(in, out, 3);
                 O.padding(1).stride(stride).groups(groups).bias(false);
 
-                return torch::nn::Conv2d(O);
+                return ScaledStdConv2d(O);
             }
             // TODO: allow different base_conv
-            torch::nn::Conv2d conv1x1(int64_t in, int64_t out, int64_t stride) {
+            ScaledStdConv2d myconv1x1(int64_t in, int64_t out, int64_t stride) {
 
                 torch::nn::Conv2dOptions O(in, out, 1);
                 O.stride(stride).bias(false);
-                return torch::nn::Conv2d(O);
+                return ScaledStdConv2d(O);
             }
 
             int BasicBlock::expansion = 1;
@@ -31,24 +35,31 @@
                 int64_t stride,
                 const torch::nn::Sequential& downsample,
                 int64_t groups,
-                int64_t base_width)
-                : stride(stride), downsample(downsample) {
+                int64_t base_width,
+                int64_t _dilation,
+                double _alpha,
+                double _beta,
+                std::string activation
+
+                )
+                : stride(stride), downsample(downsample), alpha(_alpha), beta(_beta), activation(activation), dilation(_dilation)
+                {
                 TORCH_CHECK(
                     groups == 1 && base_width == 64,
                     "BasicBlock only supports groups=1 and base_width=64");
 
+                TORCH_CHECK(
+                    dilation == 1,
+                    "BasicBlock only supports dilation=1");
+
                 // Both conv1 and downsample layers downsample the input when stride != 1
-                conv1 = conv3x3(inplanes, planes, stride);
-                conv2 = conv3x3(planes, planes);
+                conv1 = myconv3x3(inplanes, planes, stride);
+                conv2 = myconv3x3(planes, planes);
 
-                bn1 = torch::nn::BatchNorm2d(planes);
-                bn2 = torch::nn::BatchNorm2d(planes);
-
+                
                 register_module("conv1", conv1);
                 register_module("conv2", conv2);
 
-                register_module("bn1", bn1);
-                register_module("bn2", bn2);
 
                 if (!downsample.is_empty())
                     register_module("downsample", this->downsample);
@@ -60,26 +71,24 @@
                 int64_t stride,
                 const torch::nn::Sequential& downsample,
                 int64_t groups,
-                int64_t base_width)
-                : stride(stride), downsample(downsample) {
+                int64_t base_width,
+                int64_t dilation,
+                double _alpha,
+                double _beta,
+                std::string activation)
+                : stride(stride), downsample(downsample), alpha(_alpha), beta(_beta), activation(activation) {
+
                 auto width = int64_t(planes * (base_width / 64.)) * groups;
 
                 // Both conv2 and downsample layers downsample the input when stride != 1
-                conv1 = conv1x1(inplanes, width);
-                conv2 = conv3x3(width, width, stride, groups);
-                conv3 = conv1x1(width, planes * expansion);
+                conv1 = myconv1x1(inplanes, width);
+                conv2 = myconv3x3(width, width, stride, groups);
+                conv3 = myconv1x1(width, planes * expansion);
 
-                bn1 = torch::nn::BatchNorm2d(width);
-                bn2 = torch::nn::BatchNorm2d(width);
-                bn3 = torch::nn::BatchNorm2d(planes * expansion);
 
                 register_module("conv1", conv1);
                 register_module("conv2", conv2);
                 register_module("conv3", conv3);
-
-                register_module("bn1", bn1);
-                register_module("bn2", bn2);
-                register_module("bn3", bn3);
 
                 if (!downsample.is_empty())
                     register_module("downsample", this->downsample);
@@ -88,73 +97,58 @@
             torch::Tensor Bottleneck::forward(torch::Tensor X) {
                 auto identity = X;
 
-                auto out = conv1->forward(X);
-                out = bn1->forward(out).relu_();
-
+                auto out = conv1->forward(torch::relu(X)*beta);
+                out = torch::relu(out);
                 out = conv2->forward(out);
-                out = bn2->forward(out).relu_();
+                out = torch::relu(out);
 
-                out = conv3->forward(out);
-                out = bn3->forward(out);
+                out = conv3->forward(out);                
 
                 if (!downsample.is_empty())
                     identity = downsample->forward(X);
 
+                out *= alpha;
                 out += identity;
-                return out.relu_();
+               // std::cout << "bottleneck-" << X.sizes() << "-" << out.sizes() << std::endl;
+                return out;
             }
 
             torch::Tensor BasicBlock::forward(torch::Tensor x) {
                 auto identity = x;
+                
+                auto out = conv1->forward(torch::relu(x) * beta);
+                out = torch::relu(out);
 
-                auto out = conv1->forward(x);
-                out = bn1->forward(out).relu_();
 
                 out = conv2->forward(out);
-                out = bn2->forward(out);
+                
 
                 if (!downsample.is_empty())
                     identity = downsample->forward(x);
 
+                out *= alpha;
                 out += identity;
-                return out.relu_();
+             //   std::cout << "basic-" << x.sizes() << "-" << out.sizes() << std::endl;
+                return out;
             }
-  //      } // namespace _resnetimpl
+            
+        } // namespace _resnetimpl
 
-        ResNet18Impl::ResNet18Impl(int64_t num_classes, bool zero_init_residual)
-            : ResNetImpl({ 2, 2, 2, 2 }, num_classes, zero_init_residual) {}
+        NFNet18Impl::NFNet18Impl(int64_t num_classes, bool zero_init_residual)
+            : NFNetImpl({ 2, 2, 2, 2 }, num_classes, zero_init_residual) {}
 
-        ResNet34Impl::ResNet34Impl(int64_t num_classes, bool zero_init_residual)
-            : ResNetImpl({ 3, 4, 6, 3 }, num_classes, zero_init_residual) {}
+        NFNet34Impl::NFNet34Impl(int64_t num_classes, bool zero_init_residual)
+            : NFNetImpl({ 3, 4, 6, 3 }, num_classes, zero_init_residual) {}
 
-        ResNet50Impl::ResNet50Impl(int64_t num_classes, bool zero_init_residual)
-            : ResNetImpl({ 3, 4, 6, 3 }, num_classes, zero_init_residual) {}
+        NFNet50Impl::NFNet50Impl(int64_t num_classes, bool zero_init_residual)
+            : NFNetImpl({ 3, 4, 6, 3 }, num_classes, zero_init_residual) {}
 
-        ResNet101Impl::ResNet101Impl(int64_t num_classes, bool zero_init_residual)
-            : ResNetImpl({ 3, 4, 23, 3 }, num_classes, zero_init_residual) {}
+        NFNet101Impl::NFNet101Impl(int64_t num_classes, bool zero_init_residual)
+            : NFNetImpl({ 3, 4, 23, 3 }, num_classes, zero_init_residual) {}
 
-        ResNet152Impl::ResNet152Impl(int64_t num_classes, bool zero_init_residual)
-            : ResNetImpl({ 3, 8, 36, 3 }, num_classes, zero_init_residual) {}
+        NFNet152Impl::NFNet152Impl(int64_t num_classes, bool zero_init_residual)
+            : NFNetImpl({ 3, 8, 36, 3 }, num_classes, zero_init_residual) {}
 
-        ResNext50_32x4dImpl::ResNext50_32x4dImpl(
-            int64_t num_classes,
-            bool zero_init_residual)
-            : ResNetImpl({ 3, 4, 6, 3 }, num_classes, zero_init_residual, 32, 4) {}
-
-        ResNext101_32x8dImpl::ResNext101_32x8dImpl(
-            int64_t num_classes,
-            bool zero_init_residual)
-            : ResNetImpl({ 3, 4, 23, 3 }, num_classes, zero_init_residual, 32, 8) {}
-
-        WideResNet50_2Impl::WideResNet50_2Impl(
-            int64_t num_classes,
-            bool zero_init_residual)
-            : ResNetImpl({ 3, 4, 6, 3 }, num_classes, zero_init_residual, 1, 64 * 2) {}
-
-        WideResNet101_2Impl::WideResNet101_2Impl(
-            int64_t num_classes,
-            bool zero_init_residual)
-            : ResNetImpl({ 3, 4, 23, 3 }, num_classes, zero_init_residual, 1, 64 * 2) {}
 
 //    } // namespace models
 //} // namespace vision
