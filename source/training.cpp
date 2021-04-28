@@ -9,6 +9,7 @@
 #include "training.h"
 #include "models/EfficientNet.h"
 #include "models/SGD_AGC.h"
+#include "models/NFNet.h"
 
 using DataSamples_t = std::pair<std::vector<std::string>, std::vector<int>>;
 
@@ -157,7 +158,7 @@ std::pair<std::vector<std::string>,std::vector<int>> load_data_from_folder(std::
 }
 
 template<typename Dataloader>
-void train(torch::nn::ModuleHolder<EfficientNetV1Impl>& net, Dataloader& data_loader_trn, Dataloader& data_loader_valid, torch::optim::Optimizer& optimizer, int size_trn, int size_valid) {
+void train(torch::nn::ModuleHolder<NFNet34Impl>& net, Dataloader& data_loader_trn, Dataloader& data_loader_valid, torch::optim::Optimizer& optimizer, int size_trn, int size_valid) {
     /*
      This function trains the network on our data loader using optimizer.
      
@@ -318,7 +319,8 @@ int main(int argc, const char * argv[]) {
     auto custom_dataset_valid = CustomDataset(pair_images_labels_val.first, pair_images_labels_val.second).map(torch::data::transforms::Stack<>());
 
     auto netx = vision::models::ResNet34(3);
-    auto net = EfficientNetV1(GlobalParams{ 1.0, 1.0, 224, 0.2 }, 3);
+    auto nety = EfficientNetV1(GlobalParams{ 1.0, 1.0, 224, 0.2 }, 3);
+    auto net = NFNet34(3);
     try {
         net.get()->to(torch::kCUDA);
     }
@@ -328,9 +330,9 @@ int main(int argc, const char * argv[]) {
    
 
 //    torch::optim::Adam opt(net.get()->parameters(), torch::optim::AdamOptions(1e-3 /*learning rate*/));
-//    torch::optim::SGD opt(net.get()->parameters(), torch::optim::SGDOptions(1e-3));
+ //   torch::optim::SGD opt(net.get()->parameters(), torch::optim::SGDOptions(1e-3));
 
-    torch::optim::SGDAGC opt(net.get()->parameters(), torch::optim::SGDAGCOptions(1.0));
+    torch::optim::SGDAGC opt(net.get()->parameters(), torch::optim::SGDAGCOptions(1e-3));
 
     auto data_loader_trn = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(std::move(custom_dataset_trn), 4);
     auto data_loader_valid = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(std::move(custom_dataset_valid), 4);
