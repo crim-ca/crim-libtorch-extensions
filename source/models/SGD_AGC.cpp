@@ -110,8 +110,27 @@ Tensor SGDAGC::step(LossClosure closure)
             auto grad_norm = unitwise_norm(p.grad().detach());
             auto max_norm = param_norm * clipping;
             auto trigger = grad_norm > max_norm;
+            auto w = (max_norm / torch::max(grad_norm, torch::tensor(1e-6).to(grad_norm.device())));
             auto clipped_grad = p.grad() * (max_norm / torch::max(grad_norm, torch::tensor(1e-6).to(grad_norm.device())));
             p.grad().detach().copy_(torch::where(trigger, clipped_grad, p.grad())); // inplace
+#if 0
+            //  Test to record clipping weight to disk
+            // https://discuss.pytorch.org/t/iterating-over-tensor-in-c/60333/2
+            if (trigger.is_contiguous() && max_norm.is_contiguous() && grad_norm.is_contiguous()) {
+                bool* ptr_trig = (bool*)trigger.to(torch::kCPU).data_ptr();
+                float* ptr_max = (float*)max_norm.to(torch::kCPU).data_ptr();
+                float* ptr_grad = (float*)grad_norm.to(torch::kCPU).data_ptr();
+                float* ptr_w = (float*)w.to(torch::kCPU).data_ptr();
+                for (int ii = 0; ii < trigger.numel(); ii++)
+                {
+                    if(*ptr_trig++)
+                      outweight << *ptr_w<<std::endl;
+                    ptr_w++;
+                }
+
+            }
+#endif            
+            
         }
 
 

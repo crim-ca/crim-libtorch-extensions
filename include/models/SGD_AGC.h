@@ -62,6 +62,8 @@ public:
         TORCH_CHECK(defaults.momentum() >= 0, "Invalid momentum value: ", defaults.momentum());
         TORCH_CHECK(defaults.weight_decay() >= 0, "Invalid weight_decay value: ", defaults.weight_decay());
         TORCH_CHECK(!defaults.nesterov() || (defaults.momentum() > 0 && defaults.dampening() == 0), "Nesterov momentum requires a momentum and zero dampening");
+        //outweight.open("weight.txt", std::ios::out);
+
     }
 
     explicit SGDAGC(std::vector<Tensor> params,
@@ -73,6 +75,7 @@ public:
     void load(torch::serialize::InputArchive& archive) override;
 
 private:
+    //std::ofstream outweight;    // Test to record clipping weight to disk
     template <typename Self, typename Archive>
     static void serialize(Self& self, Archive& archive) {
         _TORCH_OPTIM_SERIALIZE_WITH_TEMPLATE_ARG(SGD);
