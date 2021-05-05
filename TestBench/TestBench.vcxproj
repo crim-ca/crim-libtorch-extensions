@@ -157,11 +157,17 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\DataAugmentation\DataAugmentation.h" />
+    <ClInclude Include="..\DataAugmentation\RandomRotation.h" />
+    <ClInclude Include="..\DataAugmentation\Util.h" />
     <ClInclude Include="..\include\dirent.h" />
     <ClInclude Include="..\include\models\NFNet.h" />
     <ClInclude Include="..\include\models\SGD_AGC.h" />
     <ClInclude Include="..\include\models\EfficientNet.h" />
     <ClInclude Include="..\include\stdafx.h" />
+    <ClCompile Include="..\DataAugmentation\DataAugmentation.cpp" />
+    <ClCompile Include="..\DataAugmentation\RandomRotation.cpp" />
+    <ClCompile Include="..\DataAugmentation\Util.cpp" />
     <ClCompile Include="..\source\models\NFNet.cpp" />
     <ClCompile Include="..\source\models\SGD_AGC.cpp" />
     <ClCompile Include="..\source\models\EfficientNet.cpp" />

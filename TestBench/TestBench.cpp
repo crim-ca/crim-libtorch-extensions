@@ -1,3 +1,4 @@
+// From https://github.com/pytorch/examples/blob/master/cpp/transfer-learning/main.cpp
 #include <memory>
 #include <algorithm>
 #include <vector>
@@ -12,11 +13,11 @@
 #include "models/EfficientNet.h"
 #include "models/SGD_AGC.h"
 #include "models/NFNet.h"
-
+#include "DataAugmentation/DataAugmentation.h"
 
 using DataSamples_t = std::pair<std::vector<std::string>, std::vector<int>>;
 
-constexpr auto OUTPUT_FNAME = "testsgdagc_clip0.1_lr1.0.txt";
+cv::RNG globRNG;
 
 struct _BaseModel {    
     virtual  torch::Tensor forward(torch::Tensor x)=0;
@@ -71,7 +72,7 @@ void splitData(DataSamples_t srcPairs, double splitProportion, DataSamples_t& tr
 
 
 
-torch::Tensor read_data(std::string location) {
+torch::Tensor read_data(std::string location, uint64_t image_size) {
     /*
      Function to return image read at location given as type torch::Tensor
      Resizes image to (224, 224, 3)
@@ -84,8 +85,19 @@ torch::Tensor read_data(std::string location) {
      torch::Tensor type - image read as tensor
     */
     
-    cv::Mat img = cv::imread(location, 1);
-    cv::resize(img, img, cv::Size(224, 224));// , 0, 0, cv::INTER_CUBIC);
+    cv::Mat _img = cv::imread(location, 1); // 256x256
+    //cv::resize(img, img, cv::Size(image_size, image_size));// , 0, 0, cv::INTER_CUBIC);
+
+    // Data augmentation
+    auto img = ImageTransform(_img, image_size,5, 5, 5, 1,1, 5.0/224, 5.0/224, 0 /*1?*/, 0.2, 0.2, globRNG);
+    static int n = 0;
+    char str[80];
+    sprintf(str, "H:\\projets\\efficientnet-libtorch\\build\\temp\\avant%d.png", n);
+    cv::imwrite(str, _img);
+    sprintf(str, "H:\\projets\\efficientnet-libtorch\\build\\temp\\apres%d.png", n++);
+    cv::imwrite(str, img);
+
+
     torch::Tensor img_tensor = torch::from_blob(img.data, {img.rows, img.cols, 3}, torch::kByte);
     img_tensor = img_tensor.permute({2, 0, 1});
     return img_tensor.clone();
@@ -106,7 +118,7 @@ torch::Tensor read_label(int label) {
     return label_tensor.clone();
 }
 
-std::vector<torch::Tensor> process_images(std::vector<std::string> list_images) {
+std::vector<torch::Tensor> process_images(std::vector<std::string> list_images, uint64_t image_size) {
     /*
      Function returns vector of tensors (images) read from the list of images in a folder
      Parameters
@@ -119,7 +131,7 @@ std::vector<torch::Tensor> process_images(std::vector<std::string> list_images) 
      */
     std::vector<torch::Tensor> states;
     for(std::vector<std::string>::iterator it = list_images.begin(); it != list_images.end(); ++it) {
-        torch::Tensor img = read_data(*it);
+        torch::Tensor img = read_data(*it, image_size);
         states.push_back(img);
     }
     return states;
@@ -188,22 +200,7 @@ std::pair<std::vector<std::string>,std::vector<int>> load_data_from_folder(std::
 
 template<typename Dataloader>
 void train(std::shared_ptr<_BaseModel> net, Dataloader& data_loader_trn, Dataloader& data_loader_valid, std::shared_ptr<torch::optim::Optimizer> optimizer, int size_trn, int size_valid, std::ostream& outlog) {
-    /*
-     This function trains the network on our data loader using optimizer.
-     
-     Also saves the model as model.pt after every epoch.
-     Parameters
-     ===========
-     1. net (torch::jit::script::Module type) - Pre-trained model without last FC layer
-     2. lin (torch::nn::Linear type) - last FC layer with revised out_features depending on the number of classes
-     3. data_loader (DataLoader& type) - Training data loader
-     4. optimizer (torch::optim::Optimizer& type) - Optimizer like Adam, SGD etc.
-     5. size_t (dataset_size type) - Size of training dataset
-     
-     Returns
-     ===========
-     Nothing (void)
-     */
+
     float best_accuracy = 0.0; 
     int batch_index = 0;
     outlog << "Training set size: " << size_trn << std::endl;
@@ -267,14 +264,14 @@ void train(std::shared_ptr<_BaseModel> net, Dataloader& data_loader_trn, Dataloa
         outlog << "Epoch: " << i  << ", " << "MSE: " << mse << ", training accuracy: " << Acc/size_trn<< ", validation accuracy: " << valid_acc / size_valid << std::endl;
         outlog << "** " << mse << " "<< Acc / size_trn << " " << valid_acc/size_valid << std::endl;
 
-        /*test(net, lin, data_loader, dataset_size);
+        /*test(net, lin, data_loader, dataset_size);*/
 
-        if(Acc/dataset_size > best_accuracy) {
-            best_accuracy = Acc/dataset_size;
+        if(valid_acc/size_valid > best_accuracy) {
+            best_accuracy = valid_acc/size_valid;
             std::cout << "Saving model" << std::endl;
-            net.save("model.pt");
-            torch::save(lin, "model_linear.pt");
-        }*/
+            ///net.get().save("model.pt");   need a cast?
+            //torch::save(lin, "model_linear.pt");
+        }
     }
 }
 
@@ -329,6 +326,7 @@ int main(int argc, const char* argv[]) {
 
     std::shared_ptr<_BaseModel> pNet;
     std::vector<torch::Tensor> params;
+    uint64_t image_size = 224;
     switch (archtype)
     {
     case ArchType::Resnet34:
@@ -399,8 +397,8 @@ int main(int argc, const char* argv[]) {
         // Initialize CustomDataset class and read data
       //  auto custom_dataset_trn = CustomDataset(pairs_training.first, pairs_training.second).map(torch::data::transforms::Stack<>());
       //  auto custom_dataset_valid = CustomDataset(pairs_validation.first, pairs_validation.second).map(torch::data::transforms::Stack<>());
-    auto custom_dataset_trn = CustomDataset(pair_images_labels.first, pair_images_labels.second).map(torch::data::transforms::Stack<>());
-    auto custom_dataset_valid = CustomDataset(pair_images_labels_val.first, pair_images_labels_val.second).map(torch::data::transforms::Stack<>());
+    auto custom_dataset_trn = CustomDataset(pair_images_labels.first, pair_images_labels.second, image_size).map(torch::data::transforms::Stack<>());
+    auto custom_dataset_valid = CustomDataset(pair_images_labels_val.first, pair_images_labels_val.second, image_size).map(torch::data::transforms::Stack<>());
 
 
     auto data_loader_trn = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(std::move(custom_dataset_trn), 4);
