@@ -11,6 +11,9 @@
 build/
 dist/
 install/
+*.so
+*.a
+*.o
 
 ## External module common locations
 external/

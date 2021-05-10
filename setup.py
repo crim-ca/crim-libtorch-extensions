@@ -13,16 +13,17 @@ import subprocess
 import sys
 from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension  #, CppExtension
 
 
-class CMakeExtension(Extension):
-    def __init__(self, name, *args, **kwargs):
+#class CMakeExtension(CUDAExtension):  #(CppExtension):  #(Extension):
+    #def __init__(self, name, *args, **kwargs):
         # don't invoke the original build_ext for this special extension
-        super().__init__(name, sources=[], *args, **kwargs)
+        #super().__init__(name, sources=[], *args, **kwargs)
         # self.sources = [os.path.abspath(s) for s in sources]
 
 
-class CMakeBuild(build_ext):
+class CMakeBuild(BuildExtension):  #(build_ext):
 
     def __init__(self, *args, **kwargs):
         super(CMakeBuild, self).__init__(*args, **kwargs)
@@ -176,9 +177,9 @@ setup(
     test_suite="tests",
     # tests_require=TEST_REQUIREMENTS,
     ext_modules=[
-        CMakeExtension(
+        CUDAExtension(
             name=TORCH_EXTENSION_NAME,
-            # sources=["."],
+            sources=[],
             extra_compile_args=[],
         )
     ],

@@ -6,6 +6,7 @@
 
 #else
 #include <pybind11/pybind11.h>
+#include <pybind11/functional.h>
 namespace py = pybind11;
 
 #include "nn/models/EfficientNet.h"
@@ -13,18 +14,21 @@ namespace py = pybind11;
 
 
 // module name must match "setup.py" and "CMakeLists.txt"
-PYBIND11_MODULE(efficientnet_core, m) {
+PYBIND11_MODULE(efficientnet_core, module) {
     py::doc("EfficientNet PyTorch extension with Python/C++ bindings.");
 
-    py::module_ a = m.def_submodule("activation", "Activation functions.");
+    py::module_ mod_activation = module.def_submodule("activation", "Activation functions.");
 
-    auto swish_func = a.def("swish", &swish, "Swish activation function");
-    a.def("relu6", &relu6, "ReLU6 activation function");
+    // std::function<torch::Tensor(torch::Tensor)> ActivationFunction
+    mod_activation.def("swish", &swish, "Swish activation function");
+    mod_activation.def("relu6", &relu6, "ReLU6 activation function");
 
-    py::module_ e = m.def_submodule("efficientnet", "EfficientNet implementation.");
+    py::module_ mod_efficientnet = module.def_submodule("efficientnet", "EfficientNet implementation.");
 
-    py::class_<EfficientNetOptions>(/*e*/m, "EfficientNetOptions", py::dynamic_attr())
-        .def(py::init<double, double, int64_t, double, double, double, double, int, int, ActivationFunction>(),
+    // allow override of parameter values with class instance, using 'py::dynamic_attr'
+    py::class_<EfficientNetOptions>(mod_efficientnet, "EfficientNetOptions", py::dynamic_attr())
+        .def(py::init<double, double, int64_t, double, double, double, double, int, int/*,
+                      const py::function ActivationFunction&*/  >(),
             "Initialize EfficientNet hyper-parameters with provided values.",
             py::arg("width_coefficient"),
             py::arg("depth_coefficient"),
@@ -34,8 +38,8 @@ PYBIND11_MODULE(efficientnet_core, m) {
             py::arg("batch_norm_momentum") = 0.99,
             py::arg("batch_norm_epsilon") = 0.001,
             py::arg("depth_divisor") = 8,
-            py::arg("min_depth") = -1,
-            py::arg("activation") = swish_func
+            py::arg("min_depth") = -1/*,
+            py::arg("activation") = &swish*/
         )
         .def_readwrite("width_coefficient",     &EfficientNetOptions::width_coefficient)
         .def_readwrite("depth_coefficient",     &EfficientNetOptions::depth_coefficient)
@@ -62,27 +66,26 @@ PYBIND11_MODULE(efficientnet_core, m) {
             https://github.com/pytorch/pytorch/blob/master/torch/csrc/api/include/torch/python.h
     */
     //py::class_<EfficientNet>(e, "EfficientNet")  // normally
-    torch::python::bind_module<EfficientNet>(e, "EfficientNet")  // using pytorch's binding
+    torch::python::bind_module<EfficientNet>(mod_efficientnet, "EfficientNet")  // using pytorch's binding
         .def(py::init<const EfficientNetOptions&, size_t>(),
             "Initialize EfficientNet with hyper-parameters, output class count and activation function.",
             py::arg("params"), py::arg("num_classes") = 2  // FIXME: move num_classes to params
         )
-        /*.def("forward", &EfficientNet::forward, "EfficientNet inference forward pass from input Tensor.",
+        .def("forward", &EfficientNet::forward, "EfficientNet inference forward pass from input Tensor.",
             py::arg("inputs")
         )
         .def("extract_features", &EfficientNet::extract_features,
             py::arg("inputs")
-        )*/
+        )
     ;
 
-/*
-    py::class_<EfficientNetB0>(e, "EfficientNetB0")
+
+    /*py::class_<EfficientNetB0>(mod_efficientnet, "EfficientNetB0")
         .def(py::init<size_t>(),
             "initialize",
             py::arg("num_classes")
         )
-    ;
-    */
+    ;*/
 }
 
 #endif

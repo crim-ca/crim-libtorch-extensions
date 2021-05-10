@@ -133,8 +133,8 @@ public:
                        double _batch_norm_momentum = 0.99,
                        double _batch_norm_epsilon = 0.001,
                        int _depth_divisor = 8,
-                       int _min_depth = -1,
-                       ActivationFunction _activation = swish)
+                       int _min_depth = -1/*,
+                       const ActivationFunction& _activation = swish*/)
         : width_coefficient(_width_coefficient)
         , depth_coefficient(_depth_coefficient)
         , image_size_w(_image_size)
@@ -145,7 +145,7 @@ public:
         , batch_norm_epsilon(_batch_norm_epsilon)
         , depth_divisor(_depth_divisor)
         , min_depth(_min_depth)
-        , activation(_activation)
+        /*, activation(_activation)*/
     {}
 
     EfficientNetOptions(const EfficientNetOptions&) = default;

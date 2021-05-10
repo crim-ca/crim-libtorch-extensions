@@ -14,14 +14,14 @@
 # and the following imported targets::
 #
 #     Torch
-# 
+#
 # To locate installation path of Torch, following variables are employed
 #
 #	TORCH_INSTALL_PREFIX
 #	TORCH_DIR
 #	Torch_DIR
 #
-# First match (in that order) is used. 
+# First match (in that order) is used.
 #
 
 cmake_minimum_required(VERSION 3.6.0 FATAL_ERROR)
