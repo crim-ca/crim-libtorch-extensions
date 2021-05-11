@@ -2,7 +2,7 @@
 #pragma hdrstop
 
 #ifdef NO_PYTHON
-#warning efficientnet python_binding included without python support
+#warning crim_libtorch_extensions python/bindings included without python support
 
 #else
 #include <pybind11/pybind11.h>
@@ -15,7 +15,7 @@ namespace py = pybind11;
 
 
 // module name must match "setup.py" and "CMakeLists.txt"
-PYBIND11_MODULE(efficientnet_core, module) {
+PYBIND11_MODULE(crim_libtorch_extensions, module) {
     py::doc("EfficientNet PyTorch extension with Python/C++ bindings.");
 
     /*

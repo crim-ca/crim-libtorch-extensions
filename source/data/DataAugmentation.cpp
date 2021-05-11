@@ -31,11 +31,12 @@
 //
 //M*/
 
-#include "DataAugmentation.h"
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
-#include "RandomRotation.h"
-#include "Util.h"
+
+#include "data/DataAugmentation.h"
+#include "data/RandomRotation.h"
+#include "data/Util.h"
 
 
 cv::Rect RandomDeformRect(const cv::Rect& input_rect, double x_slide_sigma, double y_slide_sigma,
@@ -44,7 +45,7 @@ cv::Rect RandomDeformRect(const cv::Rect& input_rect, double x_slide_sigma, doub
 	double x_mv_r = rng.gaussian(x_slide_sigma);
 	double y_mv_r = rng.gaussian(y_slide_sigma);
 	double aspect_change = rng.gaussian(aspect_range);
-	
+
 	cv::Rect dst_rect;
 	double deform = aspect_change / (2.0 + aspect_change);
 	dst_rect.width = input_rect.width * (1.0 + deform);
@@ -53,7 +54,7 @@ cv::Rect RandomDeformRect(const cv::Rect& input_rect, double x_slide_sigma, doub
 	dst_rect.y = input_rect.y + (input_rect.height - dst_rect.height) / 2;
 	dst_rect.x += x_mv_r * dst_rect.width;
 	dst_rect.y += y_mv_r * dst_rect.height;
-	
+
 	return dst_rect;
 }
 
@@ -67,11 +68,11 @@ cv::Mat ImageTransform(const cv::Mat& img, int64_t image_size,
 
 	// Deform Rect Randomly
 	cv::Rect area(img.cols / 2 - image_size / 2, img.rows / 2 - image_size / 2, image_size, image_size);
-	
+
 	cv::Rect rect = RandomDeformRect(area, x_slide_sigma, y_slide_sigma, aspect_range, rng);
-	
+
 	rect = util::TruncateRect(rect, img.size());
-	
+
 	// Random Rotation
 	cv::Mat dst;
 	RandomRotateImage(img, dst, yaw_sigma, pitch_sigma, roll_sigma, rect, rng);

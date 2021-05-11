@@ -31,11 +31,11 @@
 //
 //M*/
 
-#include "Util.h"
+#include "data/Util.h"
 
 namespace util{
-	
-	//! ‚Í‚İo‚é—Ìˆæ‚ğƒJƒbƒg
+
+	//! ï¿½Í‚İoï¿½ï¿½Ìˆï¿½ï¿½ï¿½Jï¿½bï¿½g
 	cv::Rect TruncateRect(const cv::Rect& obj_rect, const cv::Size& img_size)
 	{
 		cv::Rect resize_rect = obj_rect;
@@ -58,7 +58,7 @@ namespace util{
 	}
 
 
-	//! ’†S‚ğ“®‚©‚³‚¸‚ÉA‚Í‚İo‚é—Ìˆæ‚ğƒJƒbƒg
+	//! ï¿½ï¿½ï¿½Sï¿½ğ“®‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÉAï¿½Í‚İoï¿½ï¿½Ìˆï¿½ï¿½ï¿½Jï¿½bï¿½g
 	cv::Rect TruncateRectKeepCenter(const cv::Rect& obj_rect, const cv::Size& max_size)
 	{
 		cv::Rect exp_rect = obj_rect;

@@ -31,22 +31,22 @@
 //
 //M*/
 
-#include "RandomRotation.h"
-#include "Util.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include "data/RandomRotation.h"
+#include "data/Util.h"
 
 
-//!ƒˆ[^ƒsƒbƒ`^ƒ[ƒ‹‚Æ•½sˆÚ“®¬•ª‚©‚çAƒJƒƒ‰ŠO•”s—ñi‰ñ“]{•Àij‚ğ‹‚ß‚é
+//!ï¿½ï¿½ï¿½[ï¿½^ï¿½sï¿½bï¿½`ï¿½^ï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½Æ•ï¿½ï¿½sï¿½Ú“ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½Jï¿½ï¿½ï¿½ï¿½ï¿½Oï¿½ï¿½ï¿½sï¿½ï¿½iï¿½ï¿½]ï¿½{ï¿½ï¿½ï¿½iï¿½jï¿½ï¿½ï¿½ï¿½ï¿½ß‚ï¿½
 /*!
-\param[in] yaw ƒˆ[
-\param[in] pitch ƒsƒbƒ`
-\param[in] roll ƒ[ƒ‹
-\param[in] trans_x •ÀiˆÚ“®X¬•ª
-\param[in] trans_y •ÀiˆÚ“®Y¬•ª
-\param[in] trans_z •ÀiˆÚ“®Z¬•ª
-\param[out] external_matrix ŠO•”s—ñ
+\param[in] yaw ï¿½ï¿½ï¿½[
+\param[in] pitch ï¿½sï¿½bï¿½`
+\param[in] roll ï¿½ï¿½ï¿½[ï¿½ï¿½
+\param[in] trans_x ï¿½ï¿½ï¿½iï¿½Ú“ï¿½Xï¿½ï¿½ï¿½ï¿½
+\param[in] trans_y ï¿½ï¿½ï¿½iï¿½Ú“ï¿½Yï¿½ï¿½ï¿½ï¿½
+\param[in] trans_z ï¿½ï¿½ï¿½iï¿½Ú“ï¿½Zï¿½ï¿½ï¿½ï¿½
+\param[out] external_matrix ï¿½Oï¿½ï¿½ï¿½sï¿½ï¿½
 */
 void composeExternalMatrix(float yaw, float pitch, float roll, float trans_x, float trans_y, float trans_z, cv::Mat& external_matrix)
 {
@@ -76,10 +76,10 @@ void composeExternalMatrix(float yaw, float pitch, float roll, float trans_x, fl
 }
 
 
-//! ‹éŒ`‚Ìl‹÷‚ÌÀ•W‚ğ‚»‚ê‚¼‚êÄŸÀ•WŒn‚Ö•ÏŠ·
+//! ï¿½ï¿½`ï¿½Ìlï¿½ï¿½ï¿½Ìï¿½ï¿½Wï¿½ï¿½ï¿½ï¿½ï¿½ê‚¼ï¿½ï¿½Äï¿½ï¿½ï¿½ï¿½Wï¿½nï¿½Ö•ÏŠï¿½
 cv::Mat Rect2Mat(const cv::Rect& img_rect)
 {
-	// ‰æ‘œƒvƒŒ[ƒg‚Ìl‹÷‚ÌÀ•W
+	// ï¿½æ‘œï¿½vï¿½ï¿½ï¿½[ï¿½gï¿½Ìlï¿½ï¿½ï¿½Ìï¿½ï¿½W
 	cv::Mat srcCoord(3, 4, CV_64FC1);
 	srcCoord.at<double>(0, 0) = img_rect.x;
 	srcCoord.at<double>(1, 0) = img_rect.y;
@@ -98,18 +98,18 @@ cv::Mat Rect2Mat(const cv::Rect& img_rect)
 }
 
 
-//! “ü—Í‰æ‘œ‚Ìl‹÷‚ğtransM‚É‰ˆ‚Á‚Ä“§‹•ÏŠ·‚µAo—Í‰æ‘œ‚ÌŠOÚ’·•ûŒ`‚ğ‹‚ß‚é
+//! ï¿½ï¿½ï¿½Í‰æ‘œï¿½Ìlï¿½ï¿½ï¿½ï¿½transMï¿½É‰ï¿½ï¿½ï¿½ï¿½Ä“ï¿½ï¿½ï¿½ï¿½ÏŠï¿½ï¿½ï¿½ï¿½Aï¿½oï¿½Í‰æ‘œï¿½ÌŠOï¿½Ú’ï¿½ï¿½ï¿½ï¿½`ï¿½ï¿½ï¿½ï¿½ï¿½ß‚ï¿½
 /*!
-\param[in] img_size “ü—Í‰æ‘œƒTƒCƒY
-\param[in] transM 3x3‚Ì“§‹•ÏŠ·s—ñ(CV_64FC1)
-\param[out] CircumRect o—Í‰æ‘œ‚ÌŠOÚ’·•ûŒ`
+\param[in] img_size ï¿½ï¿½ï¿½Í‰æ‘œï¿½Tï¿½Cï¿½Y
+\param[in] transM 3x3ï¿½Ì“ï¿½ï¿½ï¿½ï¿½ÏŠï¿½ï¿½sï¿½ï¿½(CV_64FC1)
+\param[out] CircumRect ï¿½oï¿½Í‰æ‘œï¿½ÌŠOï¿½Ú’ï¿½ï¿½ï¿½ï¿½`
 */
 void CircumTransImgRect(const cv::Size& img_size, const cv::Mat& transM, cv::Rect_<double>& CircumRect)
 {
-	// “ü—Í‰æ‘œ‚Ìl‹÷‚ğÄŸÀ•W‚Ö•ÏŠ·
+	// ï¿½ï¿½ï¿½Í‰æ‘œï¿½Ìlï¿½ï¿½ï¿½ï¿½Äï¿½ï¿½ï¿½ï¿½Wï¿½Ö•ÏŠï¿½
 	cv::Mat cornersMat = Rect2Mat(cv::Rect(0, 0, img_size.width, img_size.height));
 
-	// À•W•ÏŠ·‚µA”ÍˆÍ‚ğæ“¾
+	// ï¿½ï¿½ï¿½Wï¿½ÏŠï¿½ï¿½ï¿½ï¿½Aï¿½ÍˆÍ‚ï¿½ï¿½æ“¾
 	cv::Mat dstCoord = transM * cornersMat;
 	double min_x = std::min(dstCoord.at<double>(0, 0) / dstCoord.at<double>(2, 0), dstCoord.at<double>(0, 3) / dstCoord.at<double>(2, 3));
 	double max_x = std::max(dstCoord.at<double>(0, 1) / dstCoord.at<double>(2, 1), dstCoord.at<double>(0, 2) / dstCoord.at<double>(2, 2));
@@ -124,22 +124,22 @@ void CircumTransImgRect(const cv::Size& img_size, const cv::Mat& transM, cv::Rec
 
 
 
-//! “ü—Í‰æ‘œ‚Æo—Í‰æ‘œ‚ÌÀ•W‚Ì‘Î‰ŠÖŒW‚ğŒvZ
+//! ï¿½ï¿½ï¿½Í‰æ‘œï¿½Æoï¿½Í‰æ‘œï¿½Ìï¿½ï¿½Wï¿½Ì‘Î‰ï¿½ï¿½ÖŒWï¿½ï¿½ï¿½vï¿½Z
 /*!
-\param[in] src_size “ü—Í‰æ‘œƒTƒCƒY
-\param[in] dst_rect “ü—Í‰æ‘œ‚ğ“§‹•ÏŠ·‚µ‚½‚Ìo—Í‰æ‘œ‚ÌŠOÚ’·•ûŒ`
-\param[in] transMat 4x4‚Ì‰ñ“]/•½sˆÚ“®s—ñ(CV_64FC1)BŒ´“_‚Å‰ñ“]‚³‚¹‚ÄAZ²•ûŒü‚É•½sˆÚ“®‚µ‚½‚à‚Ì
-\param[out] map_x o—Í‰æ‘œ‚ÌŠeÀ•W‚É‘Î‚·‚é“ü—Í‰æ‘œ‚ÌxÀ•W
-\param[out] map_y o—Í‰æ‘œ‚ÌŠeÀ•W‚É‘Î‚·‚é“ü—Í‰æ‘œ‚ÌyÀ•W
+\param[in] src_size ï¿½ï¿½ï¿½Í‰æ‘œï¿½Tï¿½Cï¿½Y
+\param[in] dst_rect ï¿½ï¿½ï¿½Í‰æ‘œï¿½ğ“§ï¿½ï¿½ÏŠï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ìoï¿½Í‰æ‘œï¿½ÌŠOï¿½Ú’ï¿½ï¿½ï¿½ï¿½`
+\param[in] transMat 4x4ï¿½Ì‰ï¿½]/ï¿½ï¿½ï¿½sï¿½Ú“ï¿½ï¿½sï¿½ï¿½(CV_64FC1)ï¿½Bï¿½ï¿½ï¿½_ï¿½Å‰ï¿½]ï¿½ï¿½ï¿½ï¿½ï¿½ÄAZï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É•ï¿½ï¿½sï¿½Ú“ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+\param[out] map_x ï¿½oï¿½Í‰æ‘œï¿½ÌŠeï¿½ï¿½ï¿½Wï¿½É‘Î‚ï¿½ï¿½ï¿½ï¿½ï¿½Í‰æ‘œï¿½ï¿½xï¿½ï¿½ï¿½W
+\param[out] map_y ï¿½oï¿½Í‰æ‘œï¿½ÌŠeï¿½ï¿½ï¿½Wï¿½É‘Î‚ï¿½ï¿½ï¿½ï¿½ï¿½Í‰æ‘œï¿½ï¿½yï¿½ï¿½ï¿½W
 
-transMat‚Í“ü—Í‰æ‘œ‚ğ‚RŸŒ³“I‚É‰ñ“]‚µA‚»‚Ì’†S‚ğ(0,0,Z)‚É’u‚­‚æ‚¤‚É•ÏŠ·‚·‚és—ñB
-o—Í‰æ‘œ‚ÍÅ“_‹——£‚ª1‚ÌƒJƒƒ‰‚ğ‘z’è‚µA“ü—Í‰æ‘œ‚ğ‚±‚±‚É“§‹•ÏŠ·‚·‚éB
-‚½‚¾‚µAƒXƒP[ƒ‹‚ğ‡‚í‚¹‚é‚½‚ß‚Éo—Í‰æ‘œ‚ÌX,YÀ•W‚ğ1/Z‚·‚éB
-o—Í‰æ‘œã‚ÌÀ•W‚ª(dx, dy)‚Å—^‚¦‚ç‚ê‚½AŒ´“_‚Æ‚»‚Ì“_‚ğŒ‹‚Ô’¼ü‚Í(dx*r, dy*r, Z*r)‚Å•\‚³‚ê‚éB
-“ü—Í‰æ‘œã‚ÌÀ•W(sx,sy)‚ğ‚RŸŒ³À•W‚Å•\‚·‚ÆtransMat*(sx, sy, 0, 1)^T ‚Æ‚È‚é‚Ì‚ÅA(sx, sy)‚Æ(dx, dy)‚ÌŠÖŒW‚Í
+transMatï¿½Í“ï¿½ï¿½Í‰æ‘œï¿½ï¿½ï¿½Rï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½É‰ï¿½]ï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½Ì’ï¿½ï¿½Sï¿½ï¿½(0,0,Z)ï¿½É’uï¿½ï¿½ï¿½æ‚¤ï¿½É•ÏŠï¿½ï¿½ï¿½ï¿½ï¿½sï¿½ï¿½B
+ï¿½oï¿½Í‰æ‘œï¿½ÍÅ“_ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½1ï¿½ÌƒJï¿½ï¿½ï¿½ï¿½ï¿½ï¿½zï¿½è‚µï¿½Aï¿½ï¿½ï¿½Í‰æ‘œï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É“ï¿½ï¿½ï¿½ï¿½ÏŠï¿½ï¿½ï¿½ï¿½ï¿½B
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Aï¿½Xï¿½Pï¿½[ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½í‚¹ï¿½é‚½ï¿½ß‚Éoï¿½Í‰æ‘œï¿½ï¿½X,Yï¿½ï¿½ï¿½Wï¿½ï¿½1/Zï¿½ï¿½ï¿½ï¿½B
+ï¿½oï¿½Í‰æ‘œï¿½ï¿½Ìï¿½ï¿½Wï¿½ï¿½(dx, dy)ï¿½Å—^ï¿½ï¿½ï¿½ï¿½ê‚½ï¿½ï¿½ï¿½Aï¿½ï¿½ï¿½_ï¿½Æ‚ï¿½ï¿½Ì“_ï¿½ï¿½ï¿½ï¿½ï¿½Ô’ï¿½ï¿½ï¿½ï¿½ï¿½(dx*r, dy*r, Z*r)ï¿½Å•\ï¿½ï¿½ï¿½ï¿½ï¿½B
+ï¿½ï¿½ï¿½Í‰æ‘œï¿½ï¿½Ìï¿½ï¿½W(sx,sy)ï¿½ï¿½ï¿½Rï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Wï¿½Å•\ï¿½ï¿½ï¿½ï¿½transMat*(sx, sy, 0, 1)^T ï¿½Æ‚È‚ï¿½Ì‚ÅA(sx, sy)ï¿½ï¿½(dx, dy)ï¿½ÌŠÖŒWï¿½ï¿½
 (sx, sy, 0, 1)^T = transMat^(-1) * (dx*r, dy*r, Z*r)
-‚Æ‚È‚éB
-‚±‚±‚©‚çAr‚ğÁ‚·‚±‚Æ‚Ådx‚Ædy‚É‘Î‰‚·‚ésx‚Æsy‚ª‹‚Ü‚éB
+ï¿½Æ‚È‚ï¿½B
+ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Arï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ‚ï¿½dxï¿½ï¿½dyï¿½É‘Î‰ï¿½ï¿½ï¿½ï¿½ï¿½sxï¿½ï¿½syï¿½ï¿½ï¿½ï¿½ï¿½Ü‚ï¿½B
 */
 void CreateMap(const cv::Size& src_size, const cv::Rect_<double>& dst_rect, const cv::Mat& transMat, cv::Mat& map_x, cv::Mat& map_y)
 {
@@ -148,8 +148,8 @@ void CreateMap(const cv::Size& src_size, const cv::Rect_<double>& dst_rect, cons
 
 	double Z = transMat.at<double>(2, 3);
 
-	cv::Mat invTransMat = transMat.inv();	// ‹ts—ñ
-	cv::Mat dst_pos(3, 1, CV_64FC1);	// o—Í‰æ‘œã‚ÌÀ•W
+	cv::Mat invTransMat = transMat.inv();	// ï¿½tï¿½sï¿½ï¿½
+	cv::Mat dst_pos(3, 1, CV_64FC1);	// ï¿½oï¿½Í‰æ‘œï¿½ï¿½Ìï¿½ï¿½W
 	dst_pos.at<double>(2, 0) = Z;
 	for (int dy = 0; dy<map_x.rows; dy++){
 		dst_pos.at<double>(1, 0) = dst_rect.y + dy;
@@ -183,18 +183,18 @@ void RotateImage(const cv::Mat& src, cv::Mat& dst, float yaw, float pitch, float
 	invPerspMat.at<double>(0, 2) = -(double)src.cols / 2;
 	invPerspMat.at<double>(1, 2) = -(double)src.rows / 2;
 
-	// ‚RŸŒ³À•W‚©‚ç‚QŸŒ³À•W‚Ö“§‹•ÏŠ·
+	// ï¿½Rï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Wï¿½ï¿½ï¿½ï¿½Qï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Wï¿½Ö“ï¿½ï¿½ï¿½ï¿½ÏŠï¿½
 	cv::Mat perspMat = cv::Mat::zeros(3, 4, CV_64FC1);
 	perspMat.at<double>(0, 0) = Z;
 	perspMat.at<double>(1, 1) = Z;
 	perspMat.at<double>(2, 2) = 1;
 
-	// À•W•ÏŠ·‚µAo—Í‰æ‘œ‚ÌÀ•W”ÍˆÍ‚ğæ“¾
+	// ï¿½ï¿½ï¿½Wï¿½ÏŠï¿½ï¿½ï¿½ï¿½Aï¿½oï¿½Í‰æ‘œï¿½Ìï¿½ï¿½Wï¿½ÍˆÍ‚ï¿½ï¿½æ“¾
 	cv::Mat transMat = perspMat * rotMat * invPerspMat;
 	cv::Rect_<double> CircumRect;
 	CircumTransImgRect(src.size(), transMat, CircumRect);
 
-	// o—Í‰æ‘œ‚Æ“ü—Í‰æ‘œ‚Ì‘Î‰ƒ}ƒbƒv‚ğì¬
+	// ï¿½oï¿½Í‰æ‘œï¿½Æ“ï¿½ï¿½Í‰æ‘œï¿½Ì‘Î‰ï¿½ï¿½}ï¿½bï¿½vï¿½ï¿½ï¿½ì¬
 	cv::Mat map_x, map_y;
 	CreateMap(src.size(), CircumRect, rotMat, map_x, map_y);
 	cv::remap(src, dst, map_x, map_y, interpolation, boarder_mode, border_color);
@@ -205,9 +205,9 @@ void RotateImage(const cv::Mat& src, cv::Mat& dst, float yaw, float pitch, float
 cv::Rect ExpandRectForRotate(const cv::Rect& area)
 {
 	cv::Rect exp_rect;
-	
+
 	int w = cvRound(std::sqrt((double)(area.width * area.width + area.height * area.height)));
-	
+
 	exp_rect.width = w;
 	exp_rect.height = w;
 	exp_rect.x = area.x - (exp_rect.width - area.width) / 2;
@@ -227,7 +227,7 @@ void RandomRotateImage(const cv::Mat& src, cv::Mat& dst, float yaw_sigma, float 
 	//double pitch = rng.uniform(-pitch_range / 2, pitch_range / 2);
 	//double roll = rng.uniform(-roll_range / 2, roll_range / 2);
 
-	cv::Rect rect = (area.width <= 0 || area.height <= 0) ? cv::Rect(0, 0, src.cols, src.rows) : 
+	cv::Rect rect = (area.width <= 0 || area.height <= 0) ? cv::Rect(0, 0, src.cols, src.rows) :
 		ExpandRectForRotate(area);
 	rect = util::TruncateRectKeepCenter(rect, src.size());
 

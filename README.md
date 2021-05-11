@@ -63,6 +63,19 @@ Type "help", "copyright", "credits" or "license" for more information.
 >>>
 ```
 
+## Development notes
+
+### Precompiled headers
+
+Every `*.cpp` file must start with these two lines (including before any comment):
+
+    #include "stdafx.h"
+    #pragma hdrstop
+
+This ensures the file uses precompiled headers and includes basic required dependencies (`Windows.h`) and defines
+when corresponding platform and build options are detected.
+
+
 ## Debugging Compilation Problems
 
 ### Missing or Wrong CMake
@@ -106,7 +119,7 @@ Because linking is done dynamically against `torch`, it must always be imported 
 
 ``` python
 import torch
-import efficientnet_core
+import crim_libtorch_extensions
 ```
 
 ### Unrecognized Symbol Error

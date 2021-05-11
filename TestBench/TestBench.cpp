@@ -3,23 +3,25 @@
 #include <algorithm>
 #include <vector>
 #include <fstream>
+
 #include "CLI/CLI.hpp"
 #include <torch/torch.h>
 #include "torchvision/models/resnet.h"
 #include "opencv2/opencv.hpp"
-
 #include "opencv2/imgcodecs.hpp"
-#include "training.h"
-#include "models/EfficientNet.h"
-#include "models/SGD_AGC.h"
-#include "models/NFNet.h"
-#include "DataAugmentation/DataAugmentation.h"
+
+#include "data/DataAugmentation.h"
+#include "nn/models/EfficientNet.h"
+#include "nn/models/NFNet.h"
+#include "nn/optim/SGD_AGC.h"
+
+#include "TestBench/training.h"
 
 using DataSamples_t = std::pair<std::vector<std::string>, std::vector<int>>;
 
 cv::RNG globRNG;
 
-struct _BaseModel {    
+struct _BaseModel {
     virtual  torch::Tensor forward(torch::Tensor x)=0;
 };
 
@@ -52,7 +54,7 @@ void splitData(DataSamples_t srcPairs, double splitProportion, DataSamples_t& tr
         vIndices.push_back(i);
 
     std::vector<int>::iterator bound;
-    bound = std::partition(vIndices.begin(), vIndices.end(), [&](auto a) { 
+    bound = std::partition(vIndices.begin(), vIndices.end(), [&](auto a) {
         double aa = (double)std::rand() / (RAND_MAX + 1u);
         return  aa < splitProportion; });
 
@@ -61,7 +63,7 @@ void splitData(DataSamples_t srcPairs, double splitProportion, DataSamples_t& tr
         trainingPairs.second.push_back(srcPairs.second.at(*it));
     }
 
-    
+
     for (std::vector<int>::iterator it = bound; it != vIndices.end(); ++it)
     {
         validationsPairs.first.push_back(srcPairs.first.at(*it));
@@ -79,12 +81,12 @@ torch::Tensor read_data(std::string location, uint64_t image_size) {
      Parameters
      ===========
      1. location (std::string type) - required to load image from the location
-     
+
      Returns
-     =========== 
+     ===========
      torch::Tensor type - image read as tensor
     */
-    
+
     cv::Mat _img = cv::imread(location, 1); // 256x256
     //cv::resize(img, img, cv::Size(image_size, image_size));// , 0, 0, cv::INTER_CUBIC);
 
@@ -109,7 +111,7 @@ torch::Tensor read_label(int label) {
      Parameters
      ===========
      1. label (int type) - required to convert int to tensor
-     
+
      Returns
      ===========
      torch::Tensor type - label read as tensor
@@ -124,7 +126,7 @@ std::vector<torch::Tensor> process_images(std::vector<std::string> list_images, 
      Parameters
      ===========
      1. list_images (std::vector<std::string> type) - list of image paths in a folder to be read
-     
+
      Returns
      ===========
      std::vector<torch::Tensor> type - Images read as tensors
@@ -143,7 +145,7 @@ std::vector<torch::Tensor> process_labels(std::vector<int> list_labels) {
      Parameters
      ===========
      1. list_labels (std::vector<int> list_labels) -
-     
+
      Returns
      ===========
      std::vector<torch::Tensor> type - returns vector of tensors (labels)
@@ -163,7 +165,7 @@ std::pair<std::vector<std::string>,std::vector<int>> load_data_from_folder(std::
      Parameters
      ===========
      1. folders_name (std::vector<std::string> type) - name of folders as a vector to load data from
-     
+
      Returns
      ===========
      std::pair<std::vector<std::string>, std::vector<int>> type - returns pair of vector of strings (image paths) and respective labels' vector (int label)
@@ -201,46 +203,46 @@ std::pair<std::vector<std::string>,std::vector<int>> load_data_from_folder(std::
 template<typename Dataloader>
 void train(std::shared_ptr<_BaseModel> net, Dataloader& data_loader_trn, Dataloader& data_loader_valid, std::shared_ptr<torch::optim::Optimizer> optimizer, int size_trn, int size_valid, std::ostream& outlog) {
 
-    float best_accuracy = 0.0; 
+    float best_accuracy = 0.0;
     int batch_index = 0;
     outlog << "Training set size: " << size_trn << std::endl;
     outlog << "Validation set size: " << size_valid << std::endl;
-    
-    
+
+
 
     for(int i=0; i<2; i++) {
         float mse = 0;
         float Acc = 0.0;
         float valid_acc = 0.0;
-        
+
         for(auto& batch: *data_loader_trn) {
             auto data = batch.data;
             auto target = batch.target.squeeze();
-            
+
             // Should be of length: batch_size
             data = data.to(torch::kF32).to(torch::kCUDA);
             target = target.to(torch::kInt64).to(torch::kCUDA);
-            
+
             //std::vector<torch::jit::IValue> input;
             //input.push_back(data);
             optimizer->zero_grad();
-            
+
             auto output = net.get()->forward(data);
             // For transfer learning
             output = output.view({output.size(0), -1});
            // std::cout << output<<std::endl;
             //output = lin(output);
-            
+
             auto loss = torch::nll_loss(torch::log_softmax(output, 1), target);
-            
+
             loss.backward();
             optimizer->step();
-            
+
             auto acc = output.argmax(1).eq(target).sum();
-            
+
             Acc += acc.template item<float>();
             mse += loss.template item<float>();
-            
+
             batch_index += 1;
         }
 
@@ -305,9 +307,9 @@ int main(int argc, const char* argv[]) {
 
     CLI11_PARSE(app, argc, argv);
     //https://stackoverflow.com/questions/428630/assigning-cout-to-a-variable-name
-    
+
     auto start_time = std::chrono::steady_clock::now();
-    
+
     std::ofstream outfile;
     bool fileopen = false;
     if (!logfilename.empty()) {
@@ -318,7 +320,7 @@ int main(int argc, const char* argv[]) {
    std::ostream& outlog = (fileopen? outfile:std::cout);
 
     if (verbose) {
-        if(lr_opt->count()>0)            
+        if(lr_opt->count()>0)
             outlog << "Learning rate = " << lr << std::endl;
         if(clipping_opt->count()>0)
             outlog << "Lambda = " << clipping << std::endl;
@@ -359,9 +361,9 @@ int main(int argc, const char* argv[]) {
         break;
 
     }
-            
+
     std::shared_ptr<torch::optim::Optimizer> pOptim;
-    
+
     switch (optimtype) {
     case OptimType::SGD:
         if (verbose)  outlog << "Using SGD " << std::endl;

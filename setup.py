@@ -104,7 +104,7 @@ class CMakeBuild(BuildExtension):  #(build_ext):
         cmake_args = ["-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(ext_dir),
                       # "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
                       "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
-                      "-DPROJECT_WITH_PYTHON=ON",
+                      "-DWITH_PYTHON=ON",
                       "-DTORCH_DIR={}".format(self.pytorch_dir),
                       "-DPYBIND11_DIR={}".format(self.pybind11_dir),
                       # "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # should be set by FindTorch
@@ -153,13 +153,13 @@ with open("requirements.txt") as r:
         REQUIRES.append(line.strip())
 
 # package will be available as import with that name
-# any submodules are defined on the C++ side by pybind11
-# extension name must match with "python_bindings.cpp" and "CMakeLists.txt"
-TORCH_EXTENSION_NAME = "efficientnet_core"
+#   submodules are defined on the C++ side by pybind11
+#   extension name must match with "python/bindings.cpp" and "CMakeLists.txt"
+TORCH_EXTENSION_NAME = "crim_libtorch_extensions"
 setup(
     name=TORCH_EXTENSION_NAME,
     version=VERSION,
-    description="EfficientNet implementation with PyTorch C++ (libtorch) and Python bindings.",
+    description="Extension implementations with PyTorch C++ (libtorch) and Python bindings.",
     long_description=README,
     author="CRIM",
     maintainer="Francis Charette-Migneault",
@@ -167,7 +167,13 @@ setup(
     contact="CRIM",
     contact_email="info@crim.ca",
     # license="",  # FIXME: pick a license for publish, also adjust classifier below
-    keywords="PyTorch, libtorch, EfficientNet",
+    keywords=", ".join([
+        "PyTorch",
+        "libtorch",
+        "extensions",
+        "EfficientNet",
+        "",
+    ]),
     url="https://www.crim.ca/stash/scm/visi/efficientnet-libtorch.git",
     zip_safe=False,
     python_requires=">=3.6, <4",
@@ -195,17 +201,19 @@ setup(
         "Development Status :: 2 - Pre-Alpha",
         # "Development Status :: 3 - Alpha",
         # "Development Status :: 4 - Beta",
+        "Environment :: Console",   # CLI11 utility
         "Environment :: GPU",
+        "Environment :: GPU :: NVIDIA CUDA ",
         "Environment :: GPU :: NVIDIA CUDA :: 11.1",  # others could work, but this one tested
-        # Environment :: Win32 (MS Windows),
+        "Environment :: Win32 (MS Windows)",
         "Intended Audience :: Developers",
         "Intended Audience :: Education"
         "Intended Audience :: Science/Research",
         # "License :: OSI Approved :: ??? License"   # MIT or Apache ?,
         "Natural Language :: English",
         # to validate Windows
-        # "Operating System :: Microsoft :: Windows",
-        # "Operating System :: Microsoft :: Windows :: Windows 10",
+        "Operating System :: Microsoft :: Windows",
+        "Operating System :: Microsoft :: Windows :: Windows 10",
         "Operating System :: Unix",
         "Operating System :: POSIX",
         "Operating System :: POSIX :: Linux",

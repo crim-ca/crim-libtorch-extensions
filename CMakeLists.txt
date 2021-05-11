@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.2.0 FATAL_ERROR)
 
 # solution name
-set(PROJECT_SOLUTION_NAME "EfficientNet" CACHE STRING "Name of the generated solution" FORCE)
+set(PROJECT_SOLUTION_NAME "CRIM-PyTorch-Extensions" CACHE STRING "Name of the generated solution" FORCE)
 if("${PROJECT_SOLUTION_NAME}" STREQUAL "")
 	message(FATAL_ERROR "Solution name cannot be empty")
 endif()
 #mark_as_advanced(PROJECT_SOLUTION_NAME)
-project(efficientnet_core LANGUAGES CXX)
+project(crim_libtorch_extensions LANGUAGES CXX)
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake" FORCE)
 include(cmake/configs.cmake)
@@ -38,18 +38,18 @@ if(NOT SET_UP_CONFIGURATIONS_DONE)
 endif()
 
 # external modules
-option(PROJECT_WITH_EXTERNAL_MODULE "Look for external module sources (must define its own cmake files)" OFF)
+option(WITH_EXTERNAL_MODULE "Look for external module sources (must define its own cmake files)" OFF)
 set(PROJECT_EXTERNAL_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external" CACHE STRING "External module location")
-#mark_as_advanced(PROJECT_WITH_EXTERNAL_MODULE)
-if(${PROJECT_WITH_EXTERNAL_MODULE})
+#mark_as_advanced(WITH_EXTERNAL_MODULE)
+if(${WITH_EXTERNAL_MODULE})
 	if(EXISTS "${PROJECT_EXTERNAL_MODULE_DIR}")
 		add_subdirectory("${PROJECT_EXTERNAL_MODULE_DIR}")
 	endif()
 endif()
 
 # tests
-option(PROJECT_WITH_TESTS "Build tests module(s)" OFF)
-#mark_as_advanced(PROJECT_WITH_TESTS)
+option(WITH_TESTS "Build tests module(s)" OFF)
+#mark_as_advanced(WITH_TESTS)
 
 # sources
 set(${PROJECT_NAME}_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
@@ -94,9 +94,9 @@ list(APPEND EXTERNAL_DLLS "${TORCH_DLLS}")
 list(APPEND EXTERNAL_DEPS "torch")
 
 # depending on Python bindinds or not, create library or module
-option(PROJECT_WITH_PYTHON "Enable Python support. Must match compilation of Torch library." ON)
-message(DEBUG "WITH Python? ${PROJECT_WITH_PYTHON}")
-if(${PROJECT_WITH_PYTHON})
+option(WITH_PYTHON "Enable Python support. Must match compilation of Torch library." ON)
+message(DEBUG "WITH Python? ${WITH_PYTHON}")
+if(${WITH_PYTHON})
     # find Python and pybind required to generate bindings
     find_package(Python COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE})
     list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})
@@ -138,6 +138,13 @@ message(DEBUG "Include libs:  " "${LIBRARIES}")
 message(DEBUG "External libs: " "${EXTERNAL_LIBS}")
 target_include_directories(${PROJECT_NAME} PUBLIC "${INCLUDE_DIRS}" "${${PROJECT_NAME}_INCLUDE_DIR}")
 target_link_libraries(${PROJECT_NAME} PUBLIC "${EXTERNAL_LIBS}")
+
+
+option(WITH_TEST_BENCH "Enable TestBench creation." ON)
+message(DEBUG "WITH TestBench? ${WITH_TEST_BENCH}")
+if(WITH_TEST_BENCH)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/TestBench)
+endif(WITH_TEST_BENCH)
 
 # installation
 include(GNUInstallDirs)
