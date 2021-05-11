@@ -6,6 +6,7 @@
 
 #else
 #include <pybind11/pybind11.h>
+#include <pybind11/attr.h>
 #include <pybind11/functional.h>
 namespace py = pybind11;
 
@@ -17,13 +18,31 @@ namespace py = pybind11;
 PYBIND11_MODULE(efficientnet_core, module) {
     py::doc("EfficientNet PyTorch extension with Python/C++ bindings.");
 
+    /*
+        Activation Functions
+    */
     py::module_ mod_activation = module.def_submodule("activation", "Activation functions.");
 
     // std::function<torch::Tensor(torch::Tensor)> ActivationFunction
     mod_activation.def("swish", &swish, "Swish activation function");
     mod_activation.def("relu6", &relu6, "ReLU6 activation function");
 
-    py::module_ mod_efficientnet = module.def_submodule("efficientnet", "EfficientNet implementation.");
+    py::module_ mod_efficientnet = module.def_submodule("efficientnet",
+        R"delim(
+            EfficientNet implementation.
+
+            Variant | Width Coefficient | Depth Coefficient | Image Resolution  | Dropout Rate
+            -----------------------------------------------------------------------------------
+            B0      | 1.0               | 1.0               | 224               | 0.2
+            B1      | 1.0               | 1.1               | 240               | 0.2
+            B2      | 1.1               | 1.2               | 260               | 0.3
+            B3      | 1.2               | 1.4               | 300               | 0.3
+            B4      | 1.4               | 1.8               | 380               | 0.4
+            B5      | 1.6               | 2.2               | 456               | 0.4
+            B6      | 1.8               | 2.6               | 528               | 0.5
+            B7      | 2.0               | 3.1               | 600               | 0.5
+        )delim"
+    );
 
     // allow override of parameter values with class instance, using 'py::dynamic_attr'
     py::class_<EfficientNetOptions>(mod_efficientnet, "EfficientNetOptions", py::dynamic_attr())
@@ -57,6 +76,8 @@ PYBIND11_MODULE(efficientnet_core, module) {
     ;
 
     /*
+        Base EfficientNet bindings
+
         Because PyTorch uses some templates to facilitate the use of shared_ptr using a ModuleWrapper
         (i.e.: when calling PYTORCH_MODULE(Module) to generate from ModuleImpl), we must employ their
         binding function instead of plain py::class_. Otherwise pointer references would be missing and
@@ -79,13 +100,57 @@ PYBIND11_MODULE(efficientnet_core, module) {
         )
     ;
 
-
-    /*py::class_<EfficientNetB0>(mod_efficientnet, "EfficientNetB0")
+    /*
+        Specialized EfficientNet B# bindings
+    */
+    torch::python::bind_module<EfficientNetB0>(mod_efficientnet, "EfficientNetB0")
         .def(py::init<size_t>(),
             "initialize",
             py::arg("num_classes")
         )
-    ;*/
+    ;
+    torch::python::bind_module<EfficientNetB1>(mod_efficientnet, "EfficientNetB1")
+        .def(py::init<size_t>(),
+            "initialize",
+            py::arg("num_classes")
+        )
+    ;
+    torch::python::bind_module<EfficientNetB2>(mod_efficientnet, "EfficientNetB2")
+        .def(py::init<size_t>(),
+            "initialize",
+            py::arg("num_classes")
+        )
+    ;
+    torch::python::bind_module<EfficientNetB3>(mod_efficientnet, "EfficientNetB3")
+        .def(py::init<size_t>(),
+            "initialize",
+            py::arg("num_classes")
+        )
+    ;
+    torch::python::bind_module<EfficientNetB4>(mod_efficientnet, "EfficientNetB4")
+        .def(py::init<size_t>(),
+            "initialize",
+            py::arg("num_classes")
+        )
+    ;
+    torch::python::bind_module<EfficientNetB5>(mod_efficientnet, "EfficientNetB5")
+        .def(py::init<size_t>(),
+            "initialize",
+            py::arg("num_classes")
+        )
+    ;
+    torch::python::bind_module<EfficientNetB6>(mod_efficientnet, "EfficientNetB6")
+        .def(py::init<size_t>(),
+            "initialize",
+            py::arg("num_classes")
+        )
+    ;
+    torch::python::bind_module<EfficientNetB7>(mod_efficientnet, "EfficientNetB7")
+        .def(py::init<size_t>(),
+            "initialize",
+            py::arg("num_classes")
+        )
+    ;
 }
 
 #endif

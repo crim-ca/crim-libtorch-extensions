@@ -243,20 +243,20 @@ class EfficientNetB0 : public EfficientNet
 public:
     EfficientNetB0(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.0, 1.0, 224, 0.2}, nboutputs) {}
 };
-class EfficientNetB3 : public EfficientNet
+class EfficientNetB1 : public EfficientNet
 {
 public:
-    EfficientNetB3(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.2, 1.4, 300, 0.3}, nboutputs) {}
+    EfficientNetB1(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.0, 1.1, 240, 0.2}, nboutputs) {}
 };
 class EfficientNetB2 : public EfficientNet
 {
 public:
     EfficientNetB2(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.1, 1.2, 260, 0.3}, nboutputs) {}
 };
-class EfficientNetB1 : public EfficientNet
+class EfficientNetB3 : public EfficientNet
 {
 public:
-    EfficientNetB1(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.0, 1.1, 240, 0.2}, nboutputs) {}
+    EfficientNetB3(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.2, 1.4, 300, 0.3}, nboutputs) {}
 };
 class EfficientNetB4 : public EfficientNet
 {

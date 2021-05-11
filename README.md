@@ -13,7 +13,6 @@ EfficientNet model implementation using `libtorch` ([PyTorch][pytorch] C++ sourc
   - [ImportError `generic_type` with Unknown Reference](#importerror-generic_type-with-unknown-reference)
   - [Unrecognized Symbol Error](#unrecognized-symbol-error)
 
-
 ## Build and Install
 
 To install the package, you must first build the dependencies.
@@ -119,6 +118,11 @@ Therefore, those missing links will be showed only at runtime.
 You must make sure that the imported `torch` package (before importing the extensions) are indeed the
 same libraries that were used to compile the extensions. There are high chances of incompatibilities and missing
 symbols between compilation from different sources. For example, if the library linked against during `import torch`
-refers to a package installed via ``pip`` or ``conda``, but extensions were compiled from source [PyTorch][pytorch]
+refers to a package installed via `pip` or `conda`, but extensions were compiled from source [PyTorch][pytorch]
 libraries, they will most probably not match.
 
+If the above situation occurs, uninstall any `pip` or `conda` installation. Then, build and install
+[PyTorch from Sources](https://github.com/pytorch/pytorch#from-source) following their directives.
+This should be not much more than preparing your environment variables to find references and define custom options,
+and then call `python setup.py install`. Finally, rebuild and install the extensions with the source libraires using
+the same command inside this repository.
