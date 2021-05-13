@@ -4,6 +4,9 @@ WARNING: using libtorch 1.4.1 codebase...
 */
 #include <stdafx.h>
 
+#include <ATen/ATen.h>
+#include <functional>
+
 #include <torch/csrc/autograd/variable.h>
 #include <torch/nn/pimpl.h>
 #include <torch/optim/optimizer.h>
@@ -11,36 +14,32 @@ WARNING: using libtorch 1.4.1 codebase...
 #include <torch/types.h>
 #include <torch/utils.h>
 
-#include <ATen/ATen.h>
-
-#include <functional>
-#include "models/SGD_AGC.h"
+#include "optim/SGD_AGC.h"
 
 
-namespace torch
-{
-namespace optim
-{
+namespace torch {
+namespace optim {
 
-    torch::Tensor unitwise_norm(torch::Tensor x) {
-        bool keepdim;
-        bool dim_is_0=true;
+torch::Tensor unitwise_norm(torch::Tensor x) {
+    bool keepdim;
+    bool dim_is_0=true;
 
-        if (x.ndimension() <= 1) {
-            keepdim = false;
-        }
-        else if (x.ndimension() <= 3) {
-            keepdim = true;
-        }
-        else if (x.ndimension() == 4) {
-            keepdim=true;
-            dim_is_0 = false;
-        }
-        if (dim_is_0)
-            return torch::sqrt(torch::sum(x * x, {0}, keepdim));
-
-        return torch::sqrt(torch::sum(x * x, {1,2,3}, keepdim));
+    if (x.ndimension() <= 1) {
+        keepdim = false;
     }
+    else if (x.ndimension() <= 3) {
+        keepdim = true;
+    }
+    else if (x.ndimension() == 4) {
+        keepdim=true;
+        dim_is_0 = false;
+    }
+    if (dim_is_0)
+        return torch::sqrt(torch::sum(x * x, {0}, keepdim));
+
+    return torch::sqrt(torch::sum(x * x, {1,2,3}, keepdim));
+}
+
 SGDAGCOptions::SGDAGCOptions(double learning_rate) :  lr_(learning_rate) {}
 bool operator==(const SGDAGCOptions& lhs, const SGDAGCOptions& rhs) {
     return (lhs.lr() == rhs.lr()) &&
@@ -106,7 +105,7 @@ Tensor SGDAGC::step(LossClosure closure)
 
             //std::cout << p << std::endl;
             auto param_norm = torch::max(unitwise_norm(p.detach()), torch::tensor(eps).to(p.device()));
-            
+
             auto grad_norm = unitwise_norm(p.grad().detach());
             auto max_norm = param_norm * clipping;
             auto trigger = grad_norm > max_norm;
@@ -129,8 +128,8 @@ Tensor SGDAGC::step(LossClosure closure)
                 }
 
             }
-#endif            
-            
+#endif
+
         }
 
 

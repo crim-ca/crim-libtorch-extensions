@@ -13,7 +13,7 @@
 #include "data/DataAugmentation.h"
 #include "nn/models/EfficientNet.h"
 #include "nn/models/NFNet.h"
-#include "nn/optim/SGD_AGC.h"
+#include "optim/SGD_AGC.h"
 
 #include "TestBench/training.h"
 

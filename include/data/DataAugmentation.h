@@ -39,7 +39,7 @@
 cv::Mat ImageTransform(const cv::Mat& img, int64_t image_size,
 	double yaw_range, double pitch_range, double roll_range,
 	double blur_sigma, double noise_sigma, double x_slide, double y_slide,
-	double aspect_range, double hflip_ratio, double vflip_ratio, 
+	double aspect_range, double hflip_ratio, double vflip_ratio,
 	cv::RNG& rng = cv::RNG());
 
 

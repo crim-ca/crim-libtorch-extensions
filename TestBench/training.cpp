@@ -1,6 +1,3 @@
-#include "stdafx.h"
-#pragma hdrstop
-
 #include <algorithm>
 #include <vector>
 #include <fstream>

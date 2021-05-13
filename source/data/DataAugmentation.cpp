@@ -31,8 +31,9 @@
 //
 //M*/
 
-#include <opencv2/highgui/highgui.hpp>
 #include <iostream>
+
+#include <opencv2/highgui/highgui.hpp>
 
 #include "data/DataAugmentation.h"
 #include "data/RandomRotation.h"

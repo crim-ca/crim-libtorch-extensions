@@ -38,13 +38,13 @@
 
 namespace util{
 
-	//! ‰æ‘œ‚©‚ç‚Í‚İo‚é‹éŒ`‚Ì®Œ`
+	//! ï¿½æ‘œï¿½ï¿½ï¿½ï¿½Í‚İoï¿½ï¿½ï¿½`ï¿½Ìï¿½ï¿½`
 	cv::Rect TruncateRect(const cv::Rect& obj_rect, const cv::Size& img_size);
 
-	//! ‰æ‘œ‚©‚ç‚Í‚İo‚é‹éŒ`‚ğ’†S‚ğˆÛ‚µ‚È‚ª‚ç®Œ`
+	//! ï¿½æ‘œï¿½ï¿½ï¿½ï¿½Í‚İoï¿½ï¿½ï¿½`ï¿½ğ’†Sï¿½ï¿½ï¿½Ûï¿½ï¿½ï¿½ï¿½È‚ï¿½ï¿½ç®ï¿½`
 	cv::Rect TruncateRectKeepCenter(const cv::Rect& obj_rect, const cv::Size& max_size);
 
-	
+
 }
 
 #endif
