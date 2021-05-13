@@ -11,7 +11,9 @@
 #pragma once
 
 #ifdef WIN32
-#include <dirent.h>
+#include "windows/dirent.h"
+#else
+#include /*GNU*/ <dirent.h>
 #endif
 
 #include <iostream>

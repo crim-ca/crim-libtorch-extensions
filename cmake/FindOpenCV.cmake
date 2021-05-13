@@ -23,6 +23,8 @@
 include("${CMAKE_CURRENT_LIST_DIR}/utils.cmake")
 find_arch()
 
+message(DEBUG "Find OpenCV")
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
 # handle OpenCV_DIR/OPENCV_DIR variants
 if(OPENCV_DIR AND NOT OpenCV_DIR)
 	set(OpenCV_DIR "${OpenCV_DIR}")
@@ -54,7 +56,7 @@ if(NOT EXISTS ${OPENCV_SEARCH_PATH})
     find_path(
         OPENCV_SEARCH_PATH
         include/opencv2/opencv.hpp
-        PATHS 
+        PATHS
             ${OpenCV_DIR}
             "${CONFIG_THIRD_PARTY_DIR}/opencv"
             "${CONFIG_THIRD_PARTY_DIR}/opencv2"
@@ -64,7 +66,7 @@ if(NOT EXISTS ${OPENCV_SEARCH_PATH})
             "${CONFIG_THIRD_PARTY_DIR}/cv2"
         #no additional paths are added to the search if OpenCV_DIR
         NO_DEFAULT_PATH
-        PATH_SUFFIXES 
+        PATH_SUFFIXES
             "install"
         DOC "The directory where opencv is installed"
     )
@@ -76,13 +78,13 @@ message(DEBUG "OpenCV: sub dir: ${OPENCV_INSTALL_SUFFIX_DIR}")
 find_path(
     opencv_INCLUDE_DIR
     opencv2/core/version.hpp
-    PATHS 
+    PATHS
         ${OpenCV_DIR}/include
         ${OPENCV_SEARCH_PATH}/include
         ${OpenCV_DIR}/${OPENCV_INSTALL_SUFFIX_DIR}/include
         ${OPENCV_SEARCH_PATH}/${OPENCV_INSTALL_SUFFIX_DIR}/include
-    PATH_SUFFIXES 
-        "opencv4" 
+    PATH_SUFFIXES
+        "opencv4"
     DOC "The directory where opencv headers are installed"
 )
 if(NOT EXISTS ${OPENCV_SEARCH_PATH})
@@ -145,28 +147,30 @@ else()
   endif()
 
   if(WIN32)
-    set(opencv_lib_name_suffix "${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}${OpenCV_VERSION_PATCH}") 
+    set(opencv_lib_name_suffix "${OpenCV_VERSION_MAJOR}${OpenCV_VERSION_MINOR}${OpenCV_VERSION_PATCH}")
   endif()
 endif()
 
 # helper macro to find various opencv lib by name
 set(OPENCV_base_lib_parts "core;calib3d;dnn;features2d;flann;highgui;imgcodecs;imgproc;ml;objdetect;photo;shape;superres;stitching;videoio;videostab")
 set(OPENCV_cuda_lib_parts "cudev;cudaoptflow;cudaobjdetect;cudalegacy;cudaimgproc;cudafeatures2d;cudastereo;cudacodec;cudafilters;cudawarping;cudabgsegm;cudaarithm")
-set(OPENCV_static_suffixes 
+set(OPENCV_static_suffixes
 	"${CMAKE_STATIC_LIBRARY_PREFIX}"
-	"${CMAKE_STATIC_LIBRARY_PREFIX}${ARCH_POSTFIX}" 
+	"${CMAKE_STATIC_LIBRARY_PREFIX}${ARCH_POSTFIX}"
 	"${CMAKE_STATIC_LIBRARY_PREFIX}/${ARCH_DIR}"
 	"${ARCH_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}"
 	"${CMAKE_STATIC_LIBRARY_PREFIX}${OPENCV_INSTALL_SUFFIX_DIR}/lib"
 	"${OPENCV_INSTALL_SUFFIX_DIR}/lib"
 )
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
 foreach(suffix ${OPENCV_static_suffixes})
-	message(DEBUG "WHERE: ${OPENCV_SEARCH_PATH}/${suffix}")
+	message(DEBUG "Search in: ${OPENCV_SEARCH_PATH}/${suffix}")
 endforeach()
+list(POP_BACK CMAKE_MESSAGE_INDENT)
 set(OPENCV_LIBRARIES "")
 set(OPENCV_DLLS "")
 foreach(lib_part_name ${OPENCV_base_lib_parts} ${OPENCV_cuda_lib_parts})
-	message(DEBUG "  OpenCV - Find library: opencv_${lib_part_name}")
+	message(DEBUG "OpenCV - Find library: opencv_${lib_part_name}")
 	find_library(
 	  OPENCV_${lib_part_name}_LIBRARY
 	  NAMES "opencv_${lib_part_name}" "opencv_${lib_part_name}${opencv_lib_name_suffix}"
@@ -207,15 +211,17 @@ mark_as_advanced(OPENCV_SHARED_LIBRARIES)
 include(${CMAKE_ROOT}/Modules/FindPackageHandleStandardArgs.cmake)
 if(MSVC)
 	find_package_handle_standard_args(OpenCV
-	  REQUIRED_VARS 
-	  OPENCV_LIBRARIES 
-	  OPENCV_DLLS 
+	  REQUIRED_VARS
+	  OPENCV_LIBRARIES
+	  OPENCV_DLLS
 	  OPENCV_INCLUDE_DIRS
 	  VERSION_VAR OpenCV_VERSION)
 else()
 	find_package_handle_standard_args(OpenCV
-	  REQUIRED_VARS 
-	  OPENCV_LIBRARIES 
+	  REQUIRED_VARS
+	  OPENCV_LIBRARIES
 	  opencv_INCLUDE_DIR
 	  VERSION_VAR OpenCV_VERSION)
 endif()
+
+list(POP_BACK CMAKE_MESSAGE_INDENT)

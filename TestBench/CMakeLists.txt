@@ -1,12 +1,19 @@
-cmake_minimum_required(VERSION 3.2.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.3.0 FATAL_ERROR)
 project(TestBench)
 
 include(../cmake/configs.cmake)
 include(../cmake/utils.cmake)
 find_arch()
 
-file(GLOB_RECURSE TestBench_INCLUDE RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
-file(GLOB_RECURSE TestBench_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.cpp")
+file(GLOB TestBench_INCLUDE RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.h")
+file(GLOB TestBench_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.cpp")
+if(WIN32)
+    file(GLOB TestBench_INCLUDE_WINDOWS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "windows/*.h")
+    file(GLOB TestBench_SOURCES_WINDOWS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "windows/*.cpp")
+    list(APPEND TestBench_INCLUDE ${TestBench_INCLUDE_WINDOWS})
+    list(APPEND TestBench_SOURCES ${TestBench_SOURCES_WINDOWS})
+endif()
+
 set(TestBench_DEFINES "")
 set(TestBench_PARENT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/..")  # allow to hanve #include "TestBench/<>", to match install
 set(TestBench_INCLUDE_DIRS "${PROJECT_INCLUDE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/..")
@@ -63,6 +70,11 @@ message(DEBUG "  INCLUDE: ${TestBench_INCLUDE_DIRS}")
 message(DEBUG "  DEPS:    ${TestBench_EXTERNAL_DEPS}")
 message(DEBUG "  LIBS:    ${TestBench_EXTERNAL_LIBS}")
 message(DEBUG "  DLLS:    ${TestBench_EXTERNAL_DLLS}")
+
+message(DEBUG "Headers files for project TestBench")
+message_items("${TestBench_INCLUDE}")
+message(DEBUG "Source files for project TestBench")
+message_items("${TestBench_SOURCES}")
 
 add_executable(TestBench ${TestBench_INCLUDE} ${TestBench_SOURCES})
 target_include_directories(TestBench PUBLIC "${TestBench_INCLUDE_DIRS}")

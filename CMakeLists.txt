@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.3.0 FATAL_ERROR)
 
 # solution name
 set(PROJECT_SOLUTION_NAME "CRIM-PyTorch-Extensions" CACHE STRING "Name of the generated solution" FORCE)
@@ -87,22 +87,12 @@ if(NOT WITH_DATA_AUGMENTATION)
     foreach(file ${EXCLUDE_SOURCES})
         list(REMOVE_ITEM PROJECT_SOURCES ${file})
     endforeach()
-else()
-    list()
 endif()
 
 message(DEBUG "Headers files for project ${PROJECT_TARGET}")
-list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    foreach(file ${PROJECT_HEADERS})
-        message(DEBUG "Found ${file}")
-    endforeach()
-list(POP_BACK CMAKE_MESSAGE_INDENT)
+message_items("${PROJECT_HEADERS}")
 message(DEBUG "Source files for project ${PROJECT_TARGET}")
-list(APPEND CMAKE_MESSAGE_INDENT "  ")
-    foreach(file ${PROJECT_SOURCES})
-        message(DEBUG "Found ${file}")
-    endforeach()
-list(POP_BACK CMAKE_MESSAGE_INDENT)
+message_items("${PROJECT_SOURCES}")
 set(PROJECT_LIBRARY_TYPE "SHARED" CACHE STRING "Library type to build.")
 set_property(CACHE PROJECT_LIBRARY_TYPE PROPERTY STRINGS SHARED STATIC)
 if(MSVC)
@@ -145,7 +135,12 @@ if(${WITH_PYTHON})
 
     # let pybind define all the required targets and libs references
     # it setups additional items that will no correctly install the python package if otherwise using 'add_library'
-    pybind11_add_module(${PROJECT_TARGET} ${TORCH_INCLUDE_DIR} ${pybind11_INCLUDE_DIRS} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
+    pybind11_add_module(${PROJECT_TARGET}
+        ${TORCH_INCLUDE_DIR}
+        ${pybind11_INCLUDE_DIRS}
+        ${PROJECT_HEADERS}
+        ${PROJECT_SOURCES}
+    )
     # target_include_directories(${PROJECT_TARGET} ${Python_INCLUDE_DIRS} ${pybind11_INCLUDE_DIRS})
 
     # patch missing definitions between pybind and pytorch
@@ -155,8 +150,10 @@ if(${WITH_PYTHON})
 
     remove_definitions(-DNO_PYTHON)
     # no bindings added if compiled directly for use in C++ only
+else()
     add_library(${PROJECT_TARGET} ${PROJECT_LIBRARY_TYPE} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 endif()
+
 
 # library
 add_dependencies(${PROJECT_TARGET} ${EXTERNAL_DEPS})
@@ -202,9 +199,9 @@ install(TARGETS ${PROJECT_TARGET}
 #install(DIRECTORY "${PROJECT_INCLUDE_DIR}" DESTINATION "include/${PROJECT_TARGET}")
 
 if(${PROJECT_LIBRARY_TYPE} STREQUAL "SHARED")
-    set(${PROJECT_TARGET}_SHARED_LIBRARIES "${PROJECT_TARGET}")
+    set(PROJECT_SHARED_LIBRARIES "${PROJECT_TARGET}")
 else()
-    set(${PROJECT_TARGET}_STATIC_LIBRARIES "${PROJECT_TARGET}")
+    set(PROJECT_STATIC_LIBRARIES "${PROJECT_TARGET}")
 endif()
 # The following code block is suggested to be used on Windows.
 # According to https://github.com/pytorch/pytorch/issues/25457,
@@ -216,9 +213,9 @@ if(MSVC)
 					   ${EXTERNAL_DLLS}
 					   $<TARGET_FILE_DIR:${PROJECT_TARGET}>)
 	install(FILES ${EXTERNAL_DLLS} DESTINATION bin)
-    set(${PROJECT_TARGET}_SHARED_LIBRARIES ${EXTERNAL_DLLS})
+    set(PROJECT_SHARED_LIBRARIES ${EXTERNAL_DLLS})
 endif(MSVC)
-message(DEBUG "${PROJECT_TARGET}_STATIC_LIBRARIES: ${${PROJECT_TARGET}_STATIC_LIBRARIES}")
-message(DEBUG "${PROJECT_TARGET}_SHARED_LIBRARIES: ${${PROJECT_TARGET}_SHARED_LIBRARIES}")
+message(DEBUG "PROJECT_STATIC_LIBRARIES: ${PROJECT_STATIC_LIBRARIES}")
+message(DEBUG "PROJECT_SHARED_LIBRARIES: ${PROJECT_SHARED_LIBRARIES}")
 
 export(PACKAGE ${PROJECT_TARGET})
