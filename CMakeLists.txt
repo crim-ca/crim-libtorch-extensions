@@ -89,10 +89,6 @@ if(NOT WITH_DATA_AUGMENTATION)
     endforeach()
 endif()
 
-message(DEBUG "Headers files for project ${PROJECT_TARGET}")
-message_items("${PROJECT_HEADERS}")
-message(DEBUG "Source files for project ${PROJECT_TARGET}")
-message_items("${PROJECT_SOURCES}")
 set(PROJECT_LIBRARY_TYPE "SHARED" CACHE STRING "Library type to build.")
 set_property(CACHE PROJECT_LIBRARY_TYPE PROPERTY STRINGS SHARED STATIC)
 if(MSVC)
@@ -130,8 +126,8 @@ if(${WITH_PYTHON})
     # add_subdirectory(${PYBIND11_DIR} ${CMAKE_BINARY_DIR}/pybind11 EXCLUDE_FROM_ALL)
     find_package(pybind11 COMPONENTS HINTS ${PYBIND11_DIR})
 
-    message(DEBUG "Python Headers:" ${Python_INCLUDE_DIRS})
-    message(DEBUG "PyBind Headers:" ${pybind11_INCLUDE_DIRS})
+    message(DEBUG "Python Headers: ${Python_INCLUDE_DIRS}")
+    message(DEBUG "PyBind Headers: ${pybind11_INCLUDE_DIRS}")
 
     # let pybind define all the required targets and libs references
     # it setups additional items that will no correctly install the python package if otherwise using 'add_library'
@@ -154,38 +150,44 @@ else()
     add_library(${PROJECT_TARGET} ${PROJECT_LIBRARY_TYPE} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 endif()
 
-
 # library
 add_dependencies(${PROJECT_TARGET} ${EXTERNAL_DEPS})
 set_property(TARGET ${PROJECT_TARGET} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${PROJECT_TARGET} PROPERTY OUTPUT_NAME "${PROJECT_TARGET}")
 set_target_properties(${PROJECT_TARGET} PROPERTIES PUBLIC_HEADER "${PROJECT_HEADERS}")
-message(DEBUG "Include dirs:  " "${INCLUDE_DIRS}")
-message(DEBUG "Include libs:  " "${LIBRARIES}")
-message(DEBUG "External libs: " "${EXTERNAL_LIBS}")
-target_include_directories(${PROJECT_TARGET} PUBLIC "${INCLUDE_DIRS}" "${PROJECT_INCLUDE_DIR}")
-target_link_libraries(${PROJECT_TARGET} PUBLIC "${EXTERNAL_LIBS}")
+message(DEBUG "Include dirs:  ${INCLUDE_DIRS}")
+message(DEBUG "Include libs:  ${LIBRARIES}")
+message(DEBUG "External libs: ${EXTERNAL_LIBS}")
+target_include_directories(${PROJECT_TARGET} PUBLIC ${INCLUDE_DIRS} ${PROJECT_INCLUDE_DIR})
+target_link_libraries(${PROJECT_TARGET} PUBLIC ${EXTERNAL_LIBS})
+
+# must enforce if data-aug added by itself, regardless of if TestBench is added or not
+if(WITH_DATA_AUGMENTATION)
+    if(NOT OPENCV_FOUND)
+        # https://github.com/opencv/opencv
+        # (better if Torch/TorchVision also compiled using it for optimizations)
+        find_package(OpenCV REQUIRED)
+    endif()
+    set(OPENCV_INCLUDE_DIRS "${opencv_INCLUDE_DIR}")  # compat MSVC
+    message(DEBUG "Detected OpenCV includes: ${OPENCV_INCLUDE_DIRS}")
+    message(DEBUG "OPENCV VERSION MAJOR: ${OpenCV_VERSION_MAJOR}")
+    list(APPEND INCLUDE_DIRS  "${OPENCV_INCLUDE_DIRS}")
+    list(APPEND EXTERNAL_LIBS "${OPENCV_LIBRARIES}")
+    list(APPEND EXTERNAL_DLLS "${OPENCV_DLLS}")
+    target_include_directories(${PROJECT_TARGET} PUBLIC ${INCLUDE_DIRS} ${PROJECT_INCLUDE_DIR})
+    target_link_libraries(${PROJECT_TARGET} PUBLIC ${EXTERNAL_LIBS})
+endif()
+
+message(DEBUG "===========================================")
+message_pkg_refs("${PROJECT_TARGET}" "${PROJECT_DEFINES}" "${PROJECT_HEADERS}" "${PROJECT_SOURCES}"
+                 "${EXTERNAL_DEPS}" "${EXTERNAL_LIBS}" "${EXTERNAL_DLLS}")
+message(DEBUG "===========================================")
 
 # utilities
 message(DEBUG "WITH TestBench? ${WITH_TEST_BENCH}")
 if(WITH_TEST_BENCH)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/TestBench)
 endif(WITH_TEST_BENCH)
-
-# can be skipped if already processed by TestBench, but must process if added by itself
-if(WITH_DATA_AUGMENTATION AND NOT WITH_TEST_BENCH)
-    if(NOT OPENCV_FOUND)
-        # https://github.com/opencv/opencv
-        # (better if Torch/TorchVision also compiled using it for optimizations)
-        find_package(OpenCV REQUIRED)
-        set(OPENCV_INCLUDE_DIRS "${opencv_INCLUDE_DIR}")  # compat MSVC
-        message(DEBUG "Detected OpenCV includes: ${OPENCV_INCLUDE_DIRS}")
-        message(DEBUG "OPENCV VERSION MAJOR: ${OpenCV_VERSION_MAJOR}")
-        list(APPEND INCLUDE_DIRS  "${OPENCV_INCLUDE_DIRS}")
-        list(APPEND EXTERNAL_LIBS "${OPENCV_LIBRARIES}")
-        list(APPEND EXTERNAL_DLLS "${OPENCV_DLLS}")
-    endif()
-endif()
 
 # installation
 include(GNUInstallDirs)

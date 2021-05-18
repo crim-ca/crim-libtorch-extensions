@@ -15,7 +15,7 @@
 #include "nn/models/NFNet.h"
 #include "optim/SGD_AGC.h"
 
-#include "TestBench/training.h"
+#include "training.h"
 
 using DataSamples_t = std::pair<std::vector<std::string>, std::vector<int>>;
 
@@ -33,7 +33,7 @@ struct _Resnet34 : public vision::models::ResNet34Impl, public _BaseModel {
 };
 
 struct _EfficientNet: public EfficientNetV1Impl, public _BaseModel {
-    explicit _EfficientNet(GlobalParams g, int n) :EfficientNetV1Impl(g, n) {}
+    explicit _EfficientNet(EfficientNetOptions o, int n) :EfficientNetV1Impl(o, n) {}
     virtual  torch::Tensor forward(torch::Tensor x) {
         return EfficientNetV1Impl::forward(x);
     }
@@ -74,18 +74,20 @@ void splitData(DataSamples_t srcPairs, double splitProportion, DataSamples_t& tr
 
 
 
-torch::Tensor read_data(std::string location, uint64_t image_size) {
-    /*
-     Function to return image read at location given as type torch::Tensor
-     Resizes image to (224, 224, 3)
-     Parameters
-     ===========
-     1. location (std::string type) - required to load image from the location
+/*
+    Function to return image read at location given as type torch::Tensor
 
-     Returns
-     ===========
-     torch::Tensor type - image read as tensor
-    */
+    Resizes image to (224, 224, 3)
+
+    Parameters
+    ===========
+    1. location (std::string type) - required to load image from the location
+
+    Returns
+    ===========
+    torch::Tensor type - image read as tensor
+*/
+torch::Tensor read_data(std::string location, uint64_t image_size) {
 
     cv::Mat _img = cv::imread(location, 1); // 256x256
     //cv::resize(img, img, cv::Size(image_size, image_size));// , 0, 0, cv::INTER_CUBIC);
@@ -342,8 +344,8 @@ int main(int argc, const char* argv[]) {
         break;
     case ArchType::EfficientNetB0:
         {
-        //pNet = std::make_shared<EfficientNetV1>(GlobalParams{ 1.0, 1.0, 224, 0.2 }, 3);
-        auto p = std::make_shared< _EfficientNet >(GlobalParams{ 1.0, 1.0, 224, 0.2 }, 3);
+        //pNet = std::make_shared<EfficientNetV1>(EfficientNetOptions{ 1.0, 1.0, 224, 0.2 }, 3);
+        auto p = std::make_shared< _EfficientNet >(EfficientNetOptions{ 1.0, 1.0, 224, 0.2 }, 3);
         params = p->parameters();
         p->to(torch::kCUDA);
         if (verbose)  outlog << *p;
@@ -389,8 +391,12 @@ int main(int argc, const char* argv[]) {
 
 
     // Get paths of images and labels as int from the folder paths
-    std::pair<std::vector<std::string>, std::vector<int>> pair_images_labels = load_data_from_folder({ dataset_folder_cls1,dataset_folder_cls2, dataset_folder_cls3 });
-    std::pair<std::vector<std::string>, std::vector<int>> pair_images_labels_val = load_data_from_folder({ dataset_folder_cls1_val,dataset_folder_cls2_val, dataset_folder_cls3_val });
+    std::pair<std::vector<std::string>, std::vector<int>> pair_images_labels = load_data_from_folder(
+        { dataset_folder_cls1,dataset_folder_cls2, dataset_folder_cls3 }
+    );
+    std::pair<std::vector<std::string>, std::vector<int>> pair_images_labels_val = load_data_from_folder(
+        { dataset_folder_cls1_val,dataset_folder_cls2_val, dataset_folder_cls3_val }
+    );
 
     //    std::pair<std::vector<std::string>, std::vector<int>> pairs_training, pairs_validation;
     //    splitData(pair_images_labels, 0.8, pairs_training, pairs_validation);
@@ -399,8 +405,10 @@ int main(int argc, const char* argv[]) {
         // Initialize CustomDataset class and read data
       //  auto custom_dataset_trn = CustomDataset(pairs_training.first, pairs_training.second).map(torch::data::transforms::Stack<>());
       //  auto custom_dataset_valid = CustomDataset(pairs_validation.first, pairs_validation.second).map(torch::data::transforms::Stack<>());
-    auto custom_dataset_trn = CustomDataset(pair_images_labels.first, pair_images_labels.second, image_size).map(torch::data::transforms::Stack<>());
-    auto custom_dataset_valid = CustomDataset(pair_images_labels_val.first, pair_images_labels_val.second, image_size).map(torch::data::transforms::Stack<>());
+    auto custom_dataset_trn = CustomDataset(pair_images_labels.first, pair_images_labels.second, image_size)
+        .map(torch::data::transforms::Stack<>());
+    auto custom_dataset_valid = CustomDataset(pair_images_labels_val.first, pair_images_labels_val.second, image_size)
+        .map(torch::data::transforms::Stack<>());
 
 
     auto data_loader_trn = torch::data::make_data_loader<torch::data::samplers::RandomSampler>(std::move(custom_dataset_trn), 4);

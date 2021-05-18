@@ -35,9 +35,21 @@
 #define __RANDOM_ROTATION__
 
 #include <opencv2/imgproc/imgproc.hpp>
+using namespace cv;
 
-void RandomRotateImage(const cv::Mat& src, cv::Mat& dst, float yaw_range, float pitch_range, float roll_range, const cv::Rect& area = cv::Rect(-1,-1, 0, 0), cv::RNG& rng = cv::RNG(),
-	float Z = 1000, int interpolation = cv::INTER_LINEAR, int boarder_mode = cv::BORDER_CONSTANT, const cv::Scalar& boarder_color = cv::Scalar(0, 0, 0));
+void RandomRotateImage(
+	const cv::Mat& src,
+	cv::Mat& dst,
+	float yaw_range,
+	float pitch_range,
+	float roll_range,
+	const cv::Rect& area = cv::Rect(-1,-1, 0, 0),
+	const cv::RNG& rng = cv::RNG(),
+	float Z = 1000,
+	int interpolation = cv::INTER_LINEAR,
+	int boarder_mode = cv::BORDER_CONSTANT,
+	const cv::Scalar& boarder_color = cv::Scalar(0, 0, 0)
+);
 
 
 #endif

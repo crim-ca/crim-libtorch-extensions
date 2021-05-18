@@ -75,16 +75,12 @@ int round_repeats(int repeats, EfficientNetOptions p)
 }
 
 /*
-    """Mobile Inverted Residual Bottleneck Block.
-    Args:
-        block_args (namedtuple): BlockArgs, defined in utils.py.
-        global_params (namedtuple): GlobalParam, defined in utils.py.
-        image_size (tuple or list): [image_height, image_width].
-    References:
-        [1] https://arxiv.org/abs/1704.04861 (MobileNet v1)
-        [2] https://arxiv.org/abs/1801.04381 (MobileNet v2)
-        [3] https://arxiv.org/abs/1905.02244 (MobileNet v3)
-    """
+Mobile Inverted Residual Bottleneck Block.
+
+References:
+    [1] https://arxiv.org/abs/1704.04861 (MobileNet v1)
+    [2] https://arxiv.org/abs/1801.04381 (MobileNet v2)
+    [3] https://arxiv.org/abs/1905.02244 (MobileNet v3)
 */
 MBConvBlockImpl::MBConvBlockImpl(
     BlockArgs block_args,

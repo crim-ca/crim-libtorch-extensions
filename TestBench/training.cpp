@@ -10,7 +10,7 @@
 #include "nn/models/NFNet.h"
 #include "optim/SGD_AGC.h"
 
-#include "TestBench/training.h"
+#include "training.h"
 
 using DataSamples_t = std::pair<std::vector<std::string>, std::vector<int>>;
 
@@ -320,7 +320,7 @@ int main(int argc, const char * argv[]) {
     auto custom_dataset_valid = CustomDataset(pair_images_labels_val.first, pair_images_labels_val.second).map(torch::data::transforms::Stack<>());
 
     auto netx = vision::models::ResNet34(3);
-    auto nety = EfficientNetV1(GlobalParams{ 1.0, 1.0, 224, 0.2 }, 3);
+    auto nety = EfficientNetV1(EfficientNetOptions{ 1.0, 1.0, 224, 0.2 }, 3);
     auto net = NFNet34(3);
     try {
         net.get()->to(torch::kCUDA);

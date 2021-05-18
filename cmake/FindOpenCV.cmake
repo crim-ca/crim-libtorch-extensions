@@ -170,7 +170,7 @@ list(POP_BACK CMAKE_MESSAGE_INDENT)
 set(OPENCV_LIBRARIES "")
 set(OPENCV_DLLS "")
 foreach(lib_part_name ${OPENCV_base_lib_parts} ${OPENCV_cuda_lib_parts})
-	message(DEBUG "OpenCV - Find library: opencv_${lib_part_name}")
+	message(DEBUG "OpenCV - Search library: opencv_${lib_part_name}")
 	find_library(
 	  OPENCV_${lib_part_name}_LIBRARY
 	  NAMES "opencv_${lib_part_name}" "opencv_${lib_part_name}${opencv_lib_name_suffix}"
@@ -193,8 +193,12 @@ foreach(lib_part_name ${OPENCV_base_lib_parts} ${OPENCV_cuda_lib_parts})
 		endif()
 	endif()
 endforeach(lib_part_name)
-message(DEBUG "CV LIBS: ${OPENCV_LIBRARIES}")
-message(DEBUG "CV DLLS: ${OPENCV_DLLS}")
+
+# results
+message(DEBUG "OpenCV LIBS:")
+message_items("${OPENCV_LIBRARIES}")
+message(DEBUG "OpenCV DLLS:")
+message_items("${OPENCV_DLLS}")
 
 set(OpenCV_FOUND FALSE)
 if( OPENCV_INCLUDE_DIRS AND NOT OPENCV_LIBRARIES STREQUAL "")
