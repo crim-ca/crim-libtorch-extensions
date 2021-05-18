@@ -40,9 +40,13 @@
 #include "data/Util.h"
 
 
-cv::Rect RandomDeformRect(const cv::Rect& input_rect, double x_slide_sigma, double y_slide_sigma,
-	double aspect_range, cv::RNG& rng)
-{
+cv::Rect RandomDeformRect(
+	const cv::Rect& input_rect,
+	double x_slide_sigma,
+	double y_slide_sigma,
+	double aspect_range,
+	cv::RNG& rng
+) {
 	double x_mv_r = rng.gaussian(x_slide_sigma);
 	double y_mv_r = rng.gaussian(y_slide_sigma);
 	double aspect_change = rng.gaussian(aspect_range);
@@ -60,11 +64,21 @@ cv::Rect RandomDeformRect(const cv::Rect& input_rect, double x_slide_sigma, doub
 }
 
 
-cv::Mat ImageTransform(const cv::Mat& img, int64_t image_size,
-	double yaw_sigma, double pitch_sigma, double roll_sigma,
-	double blur_max_sigma, double noise_max_sigma, double x_slide_sigma, double y_slide_sigma,
-	double aspect_range, double hflip_ratio, double vflip_ratio, cv::RNG& rng)
-{
+cv::Mat ImageTransform(
+	const cv::Mat& img,
+	int64_t image_size,
+	double yaw_sigma,
+	double pitch_sigma,
+	double roll_sigma,
+	double blur_max_sigma,
+	double noise_max_sigma,
+	double x_slide_sigma,
+	double y_slide_sigma,
+	double aspect_range,
+	double hflip_ratio,
+	double vflip_ratio,
+	cv::RNG& rng
+) {
 	assert(img.type() == CV_8UC1 || img.type() == CV_8UC3);
 
 	// Deform Rect Randomly

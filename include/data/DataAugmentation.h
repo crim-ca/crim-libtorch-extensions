@@ -31,8 +31,8 @@
 //
 //M*/
 
-#ifndef __DATA_AUGMENTATION__
-#define __DATA_AUGMENTATION__
+#ifndef __DATA_AUGMENTATION_H__
+#define __DATA_AUGMENTATION_H__
 
 #include <opencv2/core/core.hpp>
 using namespace cv;

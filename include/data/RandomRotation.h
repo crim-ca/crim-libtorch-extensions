@@ -31,8 +31,8 @@
 //
 //M*/
 
-#ifndef __RANDOM_ROTATION__
-#define __RANDOM_ROTATION__
+#ifndef __RANDOM_ROTATION_H__
+#define __RANDOM_ROTATION_H__
 
 #include <opencv2/imgproc/imgproc.hpp>
 using namespace cv;

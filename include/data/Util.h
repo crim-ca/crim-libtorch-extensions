@@ -31,8 +31,8 @@
 //
 //M*/
 
-#ifndef __UTIL__
-#define __UTIL__
+#ifndef __DATA_UTIL_H__
+#define __DATA_UTIL_H__
 
 #include <opencv2/core/core.hpp>
 
@@ -47,4 +47,4 @@ namespace util{
 
 }
 
-#endif
+#endif // __DATA_UTIL_H__

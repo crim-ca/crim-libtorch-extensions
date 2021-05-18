@@ -6,6 +6,8 @@ EfficientNet model implementation using `libtorch` ([PyTorch][pytorch] C++ sourc
 
 - [Build and Install](#build-and-install)
 - [Usage](#usage)
+- [Development notes](#development-notes)
+  - [Precompiled headers](#precompiled-headers)
 - [Debugging Compilation Problems](#debugging-compilation-problems)
   - [Missing or Wrong CMake](#missing-or-wrong-cmake)
   - [Failed to compute shorthash](#failed-to-compute-shorthash)
@@ -20,13 +22,19 @@ You will need to define the paths to the relevant libraries compiled for your sy
 
 | Variable           | Description                                               |
 | ------------------ | --------------------------------------------------------- |
-| PYTORCH_DIR        | Installation path of the Torch C++ library compiled from sources (or precompiled matching your system).  |
-| PYBIND11_DIR       | Installation path of PyBind11 library <br> (hint: can reuse PyTorch's `third_party` submodule)           |
+| TORCH_DIR          | Installation path of the Torch C++ library compiled from sources (or precompiled matching your system).  |
+| TORCHVISION_DIR    | Installation path of the TorchVision C++ library compiled from sources (or precompiled matching your system).  |
+| PYBIND11_DIR       | Installation path of PyBind11 library <br> (hint: can reuse PyTorch's `third_party` submodule)  |
 | PYTHON_EXECUTABLE  | Path to the Python binary to find dependencies, headers and other references. <br> (RECOMMENDED: use virtual environment, e.g.: `conda`)   |
 
 **Hint**
-Sources of [pytorch] provide a `setup.py` script that helps build and install C++ libraries by wrapping CMake and Ninja.
-A similar procedure is used for this repository extensions.
+Sources of [PyTorch][pytorch] provide a `setup.py` script that helps build and install C++ libraries by wrapping
+CMake and Ninja. A similar procedure is used for this repository extensions.
+
+**Note**
+For backward compatibility, `PYTORCH_DIR` is also used as alias to `TORCH_DIR`.
+The `TORCH_DIR` format should be preferred since variable names employed by CMake
+within [PyTorch][pytorch] sources use this convention.
 
 **Note**
 To have GPU-enabled runtime, make sure that PyTorch and EfficientNet libraries all find references to CUDA/cuDNN.

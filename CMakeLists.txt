@@ -110,13 +110,20 @@ list(APPEND INCLUDE_DIRS  "${TORCH_INCLUDE_DIR}")
 list(APPEND EXTERNAL_LIBS "${TORCH_LIBRARIES}")
 list(APPEND EXTERNAL_DLLS "${TORCH_DLLS}")
 list(APPEND EXTERNAL_DEPS "torch")
+if(NOT TORCHVISION_FOUND)
+    # https://github.com/pytorch/vision
+    find_package(TorchVision REQUIRED)
+endif()
+list(APPEND INCLUDE_DIRS  "${TORCHVISION_INCLUDE_DIRS}")
+list(APPEND EXTERNAL_LIBS "${TORCHVISION_TARGETS}")
+list(APPEND EXTERNAL_DLLS "${TORCHVISION_DLLS}")
 
 # depending on Python bindinds or not, create library or module
 option(WITH_PYTHON "Enable Python support. Must match compilation of Torch library." ON)
 message(DEBUG "WITH Python? ${WITH_PYTHON}")
 if(${WITH_PYTHON})
     # find Python and pybind required to generate bindings
-    find_package(Python COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE})
+    find_package(Python3 COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE})
     list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})
     list(APPEND EXTERNAL_LIBS ${Python_LIBRARIES})
 
@@ -155,9 +162,6 @@ add_dependencies(${PROJECT_TARGET} ${EXTERNAL_DEPS})
 set_property(TARGET ${PROJECT_TARGET} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${PROJECT_TARGET} PROPERTY OUTPUT_NAME "${PROJECT_TARGET}")
 set_target_properties(${PROJECT_TARGET} PROPERTIES PUBLIC_HEADER "${PROJECT_HEADERS}")
-message(DEBUG "Include dirs:  ${INCLUDE_DIRS}")
-message(DEBUG "Include libs:  ${LIBRARIES}")
-message(DEBUG "External libs: ${EXTERNAL_LIBS}")
 target_include_directories(${PROJECT_TARGET} PUBLIC ${INCLUDE_DIRS} ${PROJECT_INCLUDE_DIR})
 target_link_libraries(${PROJECT_TARGET} PUBLIC ${EXTERNAL_LIBS})
 

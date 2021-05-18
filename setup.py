@@ -47,7 +47,9 @@ class CMakeBuild(BuildExtension):  #(build_ext):
 
     def find_torch_dir(self):
         """
-        Attempt finding precompiled Torch with ``TORCH_DIR``, ``TORCH_LIBRARY`` or revert back to PyPI package install.
+        Attempts finding precompiled :mod:`torch`.
+
+        Searches with :envvar:`TORCH_DIR`, :envvar:`TORCH_LIBRARY` or reverts back to preinstalled package via ``pip``.
         """
         pytorch_dir = os.getenv("PYTORCH_DIR")
         if not pytorch_dir:
@@ -72,6 +74,31 @@ class CMakeBuild(BuildExtension):  #(build_ext):
         self.announce("Found PyTorch dir: {}".format(pytorch_dir))
         return pytorch_dir
 
+    def find_torchvision_dir(self):
+        """
+        Attempts finding precompiled :mod:`torchvision`.
+
+        Searches with :envvar:`TORCHVISION_DIR` or reverts back to preinstalled package via ``pip``.
+        """
+        torchvision_dir = os.getenv("TORCHVISION_DIR")
+        if torchvision_dir and os.path.isdir(torchvision_dir):
+            lib_path = "lib/libtorchvision.so" if platform.system() != "Windows" else "lib/x64/torchvision.lib"
+            torchvision_lib = os.path.join(torchvision_dir, lib_path)
+            if not os.path.isfile(torchvision_lib):
+                torchvision_lib = None
+        else:
+            try:
+                import torchvision  # noqa
+                torchvision_dir = os.path.dirname(torch.__file__)
+                torchvision_lib = os.path.join(torchvision_dir, pytorch_lib_path)
+            except ImportError:
+                torchvision_dir = None
+        if not torchvision_lib:
+            sys.stderr.write("TorchVision is required to build this package\n")
+            sys.exit(-1)
+        self.announce("Found TorchVision dir: {}".format(torchvision_dir)
+        return torchvision_dir
+
     def find_pybind_dir(self):
         pybind_dir =  os.getenv("PYBIND11_DIR", "")
         if not os.path.isdir(pybind_dir):
@@ -89,6 +116,7 @@ class CMakeBuild(BuildExtension):  #(build_ext):
 
         self.pytorch_dir = self.find_torch_dir()
         self.pybind11_dir = self.find_pybind_dir()
+        self.torchvis_dir = self.find_torchvision_dir()
         for ext in self.extensions:
             self.build_cmake(ext)
 
@@ -106,6 +134,7 @@ class CMakeBuild(BuildExtension):  #(build_ext):
                       "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
                       "-DWITH_PYTHON=ON",
                       "-DTORCH_DIR={}".format(self.pytorch_dir),
+                      "-DTORCHVISION_DIR={}".format(self.torchvision_dir),
                       "-DPYBIND11_DIR={}".format(self.pybind11_dir),
                       # "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # should be set by FindTorch
                       ]

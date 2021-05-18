@@ -1,4 +1,8 @@
 #pragma once
+/**
+ * @brief C++ adaptation of lukemelas' pytorch implementation of EfficientNet
+ * @link https://github.com/lukemelas/EfficientNet-PyTorch @endlink
+ */
 
 #include "nn/models/BaseModel.h"
 #include "nn/modules/activation.h"
@@ -12,10 +16,8 @@
 
 std::string random_string();
 
-/*
-  C++ adaptation of lukemelas' pytorch implementation of EfficientNet
-  https://github.com/lukemelas/EfficientNet-PyTorch
-*/
+namespace vision {
+namespace models {
 
 class Conv2dStaticSamePadding : public torch::nn::Conv2d
 {
@@ -25,8 +27,6 @@ public:
     Conv2dStaticSamePadding(torch::nn::Conv2dOptions o, int64_t image_size_w, int64_t image_size_h)
         : torch::nn::Conv2d(o), static_padding(nullptr)
     {
-        //1
-        //name = random_string();
         if (this->get()->options.stride().size() != 2) {
             torch::ExpandingArray<2ull>& strides = this->get()->options.stride();
             auto stridevals = *strides;
@@ -222,7 +222,7 @@ struct EfficientNetV1Impl : torch::nn::Module
 
 TORCH_MODULE(EfficientNetV1);
 
-class EfficientNet : public BaseModel, public EfficientNetV1Impl
+class EfficientNet : public IResizableModel, public EfficientNetV1Impl
 {
 public:
     EfficientNet(
@@ -278,3 +278,7 @@ class EfficientNetB7 : public EfficientNet
 public:
     EfficientNetB7(size_t nboutputs) : EfficientNet(EfficientNetOptions{2.0, 3.1, 600, 0.5}, nboutputs) {}
 };
+
+
+} // namespace models
+} // namespace vision
