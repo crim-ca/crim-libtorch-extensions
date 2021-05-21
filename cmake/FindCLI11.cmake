@@ -16,13 +16,14 @@
 #   CLI11_ROOT = <path/to/install/location>
 #
 
-if(NOT ${CLI11_ROOT})
-  find_path(CLI11_ROOT
-    NAMES include/CLI/CLI.hpp
-    HINTS "${CLI11_DIR}"  # in case it was provided directly with this variable instead
-  )
-endif()
-set(CLI11_DIR "${CLI11_ROOT}")
+message(DEBUG "Find CLI11")
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
+message(DEBUG "CLI11_ROOT: ${CLI11_ROOT}")
+message(DEBUG "CLI11_DIR:  ${CLI11_DIR}")
+find_path(CLI11_ROOT
+  NAMES include/CLI/CLI.hpp
+  HINTS "${CLI11_DIR}" "${CLI11_ROOT}"
+)
 
 find_path(CLI11_INCLUDE_DIR
   NAMES CLI/CLI.hpp
@@ -56,3 +57,4 @@ mark_as_advanced(
   CLI11_INCLUDE_DIR
   CLI11_TARGETS
 )
+list(POP_BACK CMAKE_MESSAGE_INDENT)
