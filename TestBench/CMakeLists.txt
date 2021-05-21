@@ -57,7 +57,7 @@ list(APPEND TestBench_EXTERNAL_DEPS  "${CLI11_TARGETS}")
 
 # add main project with lib extensions
 list(APPEND TestBench_EXTERNAL_DEPS "${PROJECT_TARGET}")
-list(APPEND TestBench_EXTERNAL_LIBS "${PROJECT_LIBRARY}")
+list(APPEND TestBench_EXTERNAL_LIBS "${PROJECT_TARGET}")
 
 list(APPEND TestBench_DEFINES -DUNICODE)
 if(NOT ${ARCH_POSTFIX} STREQUAL "")

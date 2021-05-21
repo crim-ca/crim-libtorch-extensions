@@ -1,3 +1,5 @@
+#include "stdafx.h"
+#pragma hdrstop
 /*M///////////////////////////////////////////////////////////////////////////////////////
 //
 //  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
@@ -217,9 +219,19 @@ cv::Rect ExpandRectForRotate(const cv::Rect& area)
 }
 
 
-void RandomRotateImage(const cv::Mat& src, cv::Mat& dst, float yaw_sigma, float pitch_sigma, float roll_sigma, const cv::Rect& area, cv::RNG& rng,
-	float Z, int interpolation, int boarder_mode, const cv::Scalar& boarder_color)
-{
+void RandomRotateImage(
+	const cv::Mat& src,
+	/*[out]*/cv::Mat& dst,
+	float yaw_sigma,
+	float pitch_sigma,
+	float roll_sigma,
+	cv::RNG& rng,
+	const cv::Rect& area,
+	float Z,
+	int interpolation,
+	int boarder_mode,
+	const cv::Scalar& boarder_color
+) {
 	double yaw = rng.gaussian(yaw_sigma);
 	double pitch = rng.gaussian(pitch_sigma);
 	double roll = rng.gaussian(roll_sigma);

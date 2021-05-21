@@ -1,4 +1,6 @@
-#include <stdafx.h>
+#include "stdafx.h"
+#pragma hdrstop
+
 #include <string>
 
 #include "nn/models/NFNet.h"

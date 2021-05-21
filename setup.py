@@ -190,7 +190,7 @@ with open("requirements.txt") as r:
 # package will be available as import with that name
 #   submodules are defined on the C++ side by pybind11
 #   extension name must match with "python/bindings.cpp" and "CMakeLists.txt"
-TORCH_EXTENSION_NAME = "crim_libtorch_extensions"
+TORCH_EXTENSION_NAME = "crim_torch_extensions"
 setup(
     name=TORCH_EXTENSION_NAME,
     version=VERSION,

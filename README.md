@@ -1,4 +1,4 @@
-# CRIM LibTorch Extensions
+# CRIM Torch Extensions
 
 Provides multiple algorithm implementation with Python/C++ bindings
 as extensions to `libtorch` ([PyTorch][pytorch] C++ sources).
@@ -132,8 +132,8 @@ Python 3.7.7 (default, May  7 2020, 21:25:33)
 [GCC 7.3.0] :: Anaconda, Inc. on linux
 Type "help", "copyright", "credits" or "license" for more information.
 
->>> import crim_libtorch_extensions
->>> crim_libtorch_extensions.activation.swish
+>>> import crim_torch_extensions
+>>> crim_torch_extensions.activation.swish
 <built-in method swish of PyCapsule object at 0x7f109a3eecf0>
 >>>
 ```
@@ -196,7 +196,7 @@ Because linking is done dynamically against `torch`, it must always be imported 
 
 ```python
 import torch
-import crim_libtorch_extensions
+import crim_torch_extensions
 ```
 
 ### Unrecognized Symbol Error

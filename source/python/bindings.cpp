@@ -2,7 +2,7 @@
 #pragma hdrstop
 
 #ifdef NO_PYTHON
-#warning crim_libtorch_extensions python/bindings included without python support
+#warning crim_torch_extensions python/bindings included without python support
 
 #else
 #include <pybind11/pybind11.h>
@@ -16,7 +16,7 @@ using namespace vision::models;
 
 
 // module name must match "setup.py" and "CMakeLists.txt"
-PYBIND11_MODULE(crim_libtorch_extensions, module) {
+PYBIND11_MODULE(crim_torch_extensions, module) {
     py::doc("EfficientNet PyTorch extension with Python/C++ bindings.");
 
     /*

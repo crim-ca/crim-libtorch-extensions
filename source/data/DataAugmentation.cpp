@@ -1,3 +1,5 @@
+#include "stdafx.h"
+#pragma hdrstop
 /*M///////////////////////////////////////////////////////////////////////////////////////
 //
 //  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
@@ -90,7 +92,7 @@ cv::Mat ImageTransform(
 
 	// Random Rotation
 	cv::Mat dst;
-	RandomRotateImage(img, dst, yaw_sigma, pitch_sigma, roll_sigma, rect, rng);
+	RandomRotateImage(img, dst, yaw_sigma, pitch_sigma, roll_sigma, rng, rect);
 
 	// Random Noise
 	double noise_sigma = rng.uniform(0.0, noise_max_sigma);

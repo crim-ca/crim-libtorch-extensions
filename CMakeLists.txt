@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.3.0 FATAL_ERROR)
 
 # solution name
-set(PROJECT_SOLUTION_NAME "CRIM-PyTorch-Extensions" CACHE STRING "Name of the generated solution" FORCE)
+set(PROJECT_SOLUTION_NAME "CRIM-Torch-Extensions" CACHE STRING "Name of the generated solution" FORCE)
 if("${PROJECT_SOLUTION_NAME}" STREQUAL "")
 	message(FATAL_ERROR "Solution name cannot be empty")
 endif()
@@ -9,7 +9,7 @@ endif()
 # this will set PROJECT_NAME
 project(${PROJECT_SOLUTION_NAME} LANGUAGES CXX)
 
-set(PROJECT_TARGET crim_libtorch_extensions)
+set(PROJECT_TARGET crim_torch_extensions)
 set(PROJECT_LIBRARY ${PROJECT_TARGET})
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake" FORCE)
@@ -64,6 +64,14 @@ option(WITH_DATA_AUGMENTATION "Include data augmentation operations (Requires Op
 option(WITH_TEST_BENCH "Build TestBench CLI utility." ON)
 option(WITH_TESTS "Build tests modules" OFF)
 option(WITH_PYTHON "Enable Python support. Must match compilation of Torch library." ON)
+message(DEBUG "Options:")
+list(APPEND CMAKE_MESSAGE_INDENT "  ")
+message(DEBUG "WITH External Module ... ${WITH_EXTERNAL_MODULE}")
+message(DEBUG "WITH DataAugmentation .. ${WITH_DATA_AUGMENTATION}")
+message(DEBUG "WITH Python ............ ${WITH_PYTHON}")
+message(DEBUG "WITH tests ............. ${WITH_TESTS}")
+message(DEBUG "WITH TestBench ......... ${WITH_TEST_BENCH}")
+list(POP_BACK CMAKE_MESSAGE_INDENT)
 
 # sources
 set(PROJECT_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
@@ -120,7 +128,6 @@ list(APPEND EXTERNAL_LIBS "${TORCHVISION_TARGETS}")
 list(APPEND EXTERNAL_DLLS "${TORCHVISION_DLLS}")
 
 # depending on Python bindinds or not, create library or module
-message(DEBUG "WITH Python? ${WITH_PYTHON}")
 if(${WITH_PYTHON})
     if(${WTIH_PYTHON} AND (${WITH_TESTS} OR ${WITH_TEST_BENCH}))
         message(FATAL "Cannot enable simultaneous Tests/TestBench and Python modules!")
@@ -165,6 +172,16 @@ if(${WITH_PYTHON})
     remove_definitions(-DNO_PYTHON)
     # no bindings added if compiled directly for use in C++ only
 else()
+    # patch over globbing of python bindings
+    message(DEBUG "Disabled WITH_PYTHON - Will remove all items in 'python' directories.")
+    file(GLOB_RECURSE EXCLUDE_HEADERS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_INCLUDE_DIR}/python/*.h")
+    file(GLOB_RECURSE EXCLUDE_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_SOURCES_DIR}/python/*.cpp")
+    foreach(file ${EXCLUDE_HEADERS})
+        list(REMOVE_ITEM PROJECT_HEADERS ${file})
+    endforeach()
+    foreach(file ${EXCLUDE_SOURCES})
+        list(REMOVE_ITEM PROJECT_SOURCES ${file})
+    endforeach()
     add_library(${PROJECT_LIBRARY} ${PROJECT_LIBRARY_TYPE} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 endif()
 
@@ -205,7 +222,6 @@ if(WITH_TESTS)
 endif()
 
 # utilities
-message(DEBUG "WITH TestBench? ${WITH_TEST_BENCH}")
 if(WITH_TEST_BENCH)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/TestBench)
 endif(WITH_TEST_BENCH)
