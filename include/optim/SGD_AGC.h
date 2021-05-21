@@ -35,7 +35,7 @@ struct  SGDAGCOptions
     TORCH_ARG(double, clipping) = 1e-2;
     TORCH_ARG(double, eps) = 1e-5;
 #endif
-    
+
     struct  SGDAGCOptions : public OptimizerCloneableOptions<SGDAGCOptions> {
         SGDAGCOptions(double lr);
         TORCH_ARG(double, lr);
@@ -53,7 +53,14 @@ struct  SGDAGCOptions
     };
 
 
+/**
+ * @brief Stochastic Gradient Descent with Adaptive Gradient Clipping
+ *
+ * Implementation based of `PyTorch implementation of Normalizer-Free Networks and Adaptive Gradient Clipping`.
+ * @link https://github.com/vballoli/nfnets-pytorch @endlink
+ */
 class  SGDAGC : public Optimizer
+
 {
 public:
     explicit SGDAGC(std::vector<OptimizerParamGroup> param_groups,

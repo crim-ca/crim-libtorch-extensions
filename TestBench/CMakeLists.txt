@@ -55,6 +55,10 @@ endif()
 list(APPEND TestBench_INCLUDE_DIRS   "${CLI11_INCLUDE_DIR}")
 list(APPEND TestBench_EXTERNAL_DEPS  "${CLI11_TARGETS}")
 
+# add main project with lib extensions
+list(APPEND TestBench_EXTERNAL_DEPS "${PROJECT_TARGET}")
+list(APPEND TestBench_EXTERNAL_LIBS "${PROJECT_LIBRARY}")
+
 list(APPEND TestBench_DEFINES -DUNICODE)
 if(NOT ${ARCH_POSTFIX} STREQUAL "")
 	list(APPEND TestBench_DEFINES -DAMD64)	# x64
@@ -70,10 +74,10 @@ message_pkg_refs("External" "" "${TestBench_INCLUDE_DIRS}" ""
 message(DEBUG "===========================================")
 
 add_executable(TestBench ${TestBench_INCLUDE} ${TestBench_SOURCES})
-target_include_directories(TestBench PUBLIC "${TestBench_INCLUDE_DIRS}")
+target_include_directories(TestBench PRIVATE "${TestBench_INCLUDE_DIRS}")
 set_target_properties(TestBench PROPERTIES PUBLIC_HEADER "${TestBench_INCLUDE}")
-target_link_libraries(TestBench PUBLIC "${TestBench_EXTERNAL_LIBS}")
-add_dependencies(TestBench ${PROJECT_TARGET} ${TestBench_EXTERNAL_DEPS})
+target_link_libraries(TestBench PRIVATE "${TestBench_EXTERNAL_LIBS}")
+add_dependencies(TestBench ${TestBench_EXTERNAL_DEPS})
 set_property(TARGET TestBench PROPERTY CXX_STANDARD 14)
 foreach(def ${TestBench_DEFINES})
 	target_compile_definitions(TestBench PUBLIC ${def})

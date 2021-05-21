@@ -5,8 +5,8 @@
 
 
 //#include "Base.h"
-//namespace vision {
-//namespace models {
+namespace vision {
+namespace models {
 namespace _nfnetimpl {
 
 // TODO: allow different base_conv
@@ -152,5 +152,5 @@ NFNet152Impl::NFNet152Impl(int64_t num_classes, bool zero_init_residual)
     : NFNetImpl({ 3, 8, 36, 3 }, num_classes, zero_init_residual) {}
 
 
-//} // namespace models
-//} // namespace vision
+} // namespace models
+} // namespace vision

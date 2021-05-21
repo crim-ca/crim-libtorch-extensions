@@ -14,7 +14,6 @@
 #include <random>
 #include <string>
 
-std::string random_string();
 
 namespace vision {
 namespace models {
@@ -222,14 +221,14 @@ struct EfficientNetV1Impl : torch::nn::Module
 
 TORCH_MODULE(EfficientNetV1);
 
-class EfficientNet : public IResizableModel, public EfficientNetV1Impl
+class EfficientNet : /*public IResizableModel, public IBaseModel, */ public EfficientNetV1Impl
 {
 public:
     EfficientNet(
         EfficientNetOptions params,
         size_t nboutputs
     ) : EfficientNetV1Impl(params, nboutputs) {}
-    virtual void resizeLastLayer(size_t outputCount) {}
+    /*virtual void resizeLastLayer(size_t outputCount) {}*/
     virtual torch::Tensor forward(torch::Tensor x)
     {
         return EfficientNetV1Impl::forward(x);

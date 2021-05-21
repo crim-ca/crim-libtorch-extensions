@@ -12,6 +12,7 @@ namespace py = pybind11;
 
 #include "nn/models/EfficientNet.h"
 #include "nn/modules/activation.h"
+using namespace vision::models;
 
 
 // module name must match "setup.py" and "CMakeLists.txt"

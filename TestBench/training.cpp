@@ -7,42 +7,12 @@
 #include "opencv2/imgcodecs.hpp"
 
 #include "data/DataAugmentation.h"
+#include "nn/models/BaseModel.h"
 #include "nn/models/EfficientNet.h"
 #include "nn/models/NFNet.h"
 #include "optim/SGD_AGC.h"
 
 #include "training.h"
-
-using DataSamples_t = std::pair<std::vector<std::string>, std::vector<int>>;
-
-constexpr auto OUTPUT_FNAME = "testsgdagc_clip0.1_lr1.0.txt";
-
-/*
-void splitData(DataSamples_t srcPairs, double splitProportion, DataSamples_t& trainingPairs, DataSamples_t& validationsPairs) {
-
-    std::vector<int> vIndices;
-    for (int i = 0; i < srcPairs.first.size(); i++)
-        vIndices.push_back(i);
-
-    std::vector<int>::iterator bound;
-    bound = std::partition(vIndices.begin(), vIndices.end(), [&](auto a) {
-        double aa = (double)std::rand() / (RAND_MAX + 1u);
-        return  aa < splitProportion; });
-
-    for (std::vector<int>::iterator it = vIndices.begin(); it != bound; ++it) {
-        trainingPairs.first.push_back(srcPairs.first.at(*it));
-        trainingPairs.second.push_back(srcPairs.second.at(*it));
-    }
-
-
-    for (std::vector<int>::iterator it = bound; it != vIndices.end(); ++it)
-    {
-        validationsPairs.first.push_back(srcPairs.first.at(*it));
-        validationsPairs.second.push_back(srcPairs.second.at(*it));
-    }
-
-}
-*/
 
 /// Function to return image read at given path location
 torch::Tensor read_data(std::string location, uint64_t image_size, const cv::RNG& rng) {
@@ -79,7 +49,7 @@ torch::Tensor read_label(int label) {
 std::vector<torch::Tensor> process_images(std::vector<std::string> list_images, uint64_t image_size, const cv::RNG& rng) {
 
     std::vector<torch::Tensor> states;
-    for(std::vector<std::string>::iterator it = list_images.begin(); it != list_images.end(); ++it) {
+    for(auto it = list_images.begin(); it != list_images.end(); ++it) {
         torch::Tensor img = read_data(*it, image_size, rng);
         states.push_back(img);
     }
@@ -97,7 +67,7 @@ std::vector<torch::Tensor> process_labels(std::vector<int> list_labels) {
 }
 
 /// Function to load data from given folder(s) name(s) (folders_name)
-std::pair<std::vector<std::string>, std::vector<int>> load_data_from_folder(std::vector<std::string> folders_name) {
+std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(std::vector<std::string> folders_name) {
     std::vector<std::string> list_images;
     std::vector<int> list_labels;
     int label = 0;
@@ -128,22 +98,33 @@ std::pair<std::vector<std::string>, std::vector<int>> load_data_from_folder(std:
     return std::make_pair(list_images, list_labels);
 }
 
-/// Function to train the network on train data
-
+/// Trains the network on sample data
 template<typename Dataloader>
-void train(std::shared_ptr<IBaseModel> net, Dataloader& data_loader_trn, Dataloader& data_loader_valid, std::shared_ptr<torch::optim::Optimizer> optimizer, int size_trn, int size_valid, std::ostream& outlog) {
+void train(
+    std::shared_ptr<torch::jit::script::Module> net,
+    /*torch::nn::Linear lin, */
+    Dataloader& data_loader_train,
+    Dataloader& data_loader_valid,
+    std::shared_ptr<torch::optim::Optimizer> optimizer,
+    size_t size_train,
+    size_t size_valid,
+    std::ostream& outlog,
+    size_t max_epochs
+) {
 
     float best_accuracy = 0.0;
     int batch_index = 0;
-    outlog << "Training set size: " << size_trn << std::endl;
+    outlog << "Training set size: " << size_train << std::endl;
     outlog << "Validation set size: " << size_valid << std::endl;
 
-    for(int i=0; i<2; i++) {
+
+
+    for(int epoch=0; epoch<max_epochs; epoch++) {
         float mse = 0;
         float Acc = 0.0;
         float valid_acc = 0.0;
 
-        for(auto& batch: *data_loader_trn) {
+        for(auto& batch: *data_loader_train) {
             auto data = batch.data;
             auto target = batch.target.squeeze();
 
@@ -155,11 +136,13 @@ void train(std::shared_ptr<IBaseModel> net, Dataloader& data_loader_trn, Dataloa
             //input.push_back(data);
             optimizer->zero_grad();
 
-            auto output = net.get()->forward(data);
+            auto output = net->forward(data);
             // For transfer learning
             output = output.view({output.size(0), -1});
-           // std::cout << output<<std::endl;
-            //output = lin(output);
+            /*
+            outlog << output <<std::endl;
+            output = lin(output);
+            */
 
             auto loss = torch::nll_loss(torch::log_softmax(output, 1), target);
 
@@ -182,7 +165,7 @@ void train(std::shared_ptr<IBaseModel> net, Dataloader& data_loader_trn, Dataloa
             data = data.to(torch::kF32).to(torch::kCUDA);
             target = target.to(torch::kInt64).to(torch::kCUDA);
 
-            auto output = net.get()->forward(data);
+            auto output = net->forward(data);
             output = output.view({ output.size(0), -1 });
             auto acc = output.argmax(1).eq(target).sum();
 
@@ -191,10 +174,11 @@ void train(std::shared_ptr<IBaseModel> net, Dataloader& data_loader_trn, Dataloa
 
 
         mse = mse/float(batch_index); // Take mean of loss
-        outlog << "Epoch: " << i  << ", " << "MSE: " << mse << ", training accuracy: " << Acc/size_trn<< ", validation accuracy: " << valid_acc / size_valid << std::endl;
-        outlog << "** " << mse << " "<< Acc / size_trn << " " << valid_acc/size_valid << std::endl;
+        outlog << "Epoch: " << epoch  << ", " << "MSE: " << mse << ", training accuracy: "
+               << Acc / size_train << ", validation accuracy: " << valid_acc / size_valid << std::endl;
+        outlog << "** " << mse << " "<< Acc / size_train << " " << valid_acc / size_valid << std::endl;
 
-        /*test(net, lin, data_loader, dataset_size);*/
+        /*test(net, data_loader, dataset_size, lin);*/
 
         if(valid_acc/size_valid > best_accuracy) {
             best_accuracy = valid_acc/size_valid;
@@ -207,8 +191,19 @@ void train(std::shared_ptr<IBaseModel> net, Dataloader& data_loader_trn, Dataloa
 
 /// Evaluate trained network inference on test data
 template<typename Dataloader>
-void test(torch::jit::script::Module net, torch::nn::Linear lin, Dataloader& loader, size_t data_size) {
-    net.eval();
+void test(
+    std::shared_ptr<torch::jit::script::Module> net,
+    /*torch::nn::Linear lin, */
+    Dataloader& loader,
+    size_t data_size
+) {
+
+    #ifdef USE_BASE_MODEL
+    auto pNet = net;
+    #else
+    auto pNet = net.get();
+    #endif
+    pNet->eval();
 
     float Loss = 0, Acc = 0;
 
@@ -222,10 +217,9 @@ void test(torch::jit::script::Module net, torch::nn::Linear lin, Dataloader& loa
         std::vector<torch::jit::IValue> input;
         input.push_back(data);
 
-        auto output = net.forward(input).toTensor();
+        auto output = pNet->forward(input).toTensor();
         output = output.view({output.size(0), -1});
-        output = lin(output);
-
+        /*output = lin(output);*/
         auto loss = torch::nll_loss(torch::log_softmax(output, 1), targets);
         auto acc = output.argmax(1).eq(targets).sum();
         Loss += loss.template item<float>();
@@ -233,4 +227,30 @@ void test(torch::jit::script::Module net, torch::nn::Linear lin, Dataloader& loa
     }
 
     std::cout << "Test Loss: " << Loss/data_size << ", Acc:" << Acc/data_size << std::endl;
+}
+
+
+/// Splits data samples into training and validation sets according to specified ratio
+void split_data(DataSamples srcPairs, double splitProportion, DataSamples& trainingPairs, DataSamples& validationsPairs) {
+
+    std::vector<int> vIndices;
+    for (int i = 0; i < srcPairs.first.size(); i++)
+        vIndices.push_back(i);
+
+    std::vector<int>::iterator bound;
+    bound = std::partition(vIndices.begin(), vIndices.end(), [&](auto a) {
+        double aa = (double)std::rand() / (RAND_MAX + 1u);
+        return  aa < splitProportion; });
+
+    for (std::vector<int>::iterator it = vIndices.begin(); it != bound; ++it) {
+        trainingPairs.first.push_back(srcPairs.first.at(*it));
+        trainingPairs.second.push_back(srcPairs.second.at(*it));
+    }
+
+
+    for (std::vector<int>::iterator it = bound; it != vIndices.end(); ++it)
+    {
+        validationsPairs.first.push_back(srcPairs.first.at(*it));
+        validationsPairs.second.push_back(srcPairs.second.at(*it));
+    }
 }

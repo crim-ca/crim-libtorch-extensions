@@ -11,6 +11,15 @@
 namespace vision {
 namespace models {
 
+
+/**
+ * @brief Normalizer-Free Networks
+ *
+ * Implementation based of `PyTorch implementation of Normalizer-Free Networks and Adaptive Gradient Clipping`.
+ * @link https://github.com/vballoli/nfnets-pytorch @endlink
+ *
+ * @tparam Block    Underlying block implementation known to the class employed to generate variants.
+ */
 template <typename Block>
 struct NFNetImpl;
 
@@ -142,18 +151,19 @@ NFNetImpl<Block>::NFNetImpl(
     int64_t num_classes,
     bool zero_init_residual,
     int64_t groups,
-    int64_t width_per_group, int64_t dilation)
-    : groups(groups),
-    base_width(width_per_group),
-    inplanes(64), dilation(dilation),
-    conv1(
-        torch::nn::Conv2dOptions(3, 64, 7).stride(2).padding(3).bias(false)),
-
-    layer1(_make_layer(64, layers[0], 1, false, 0.2, 1.0)),
-    layer2(_make_layer(128, layers[1], 2, false, 0.2, 1.0)),
-    layer3(_make_layer(256, layers[2], 2,false, 0.2, 1.0)),
-    layer4(_make_layer(512, layers[3], 2, false, 0.2, 1.0)),
-    fc(512 * Block::expansion, num_classes)
+    int64_t width_per_group,
+    int64_t dilation
+)
+    : groups(groups)
+    , base_width(width_per_group)
+    , inplanes(64)
+    , dilation(dilation)
+    , conv1(torch::nn::Conv2dOptions(3, 64, 7).stride(2).padding(3).bias(false))
+    , layer1(_make_layer(64, layers[0], 1, false, 0.2, 1.0))
+    , layer2(_make_layer(128, layers[1], 2, false, 0.2, 1.0))
+    , layer3(_make_layer(256, layers[2], 2,false, 0.2, 1.0))
+    , layer4(_make_layer(512, layers[3], 2, false, 0.2, 1.0))
+    , fc(512 * Block::expansion, num_classes)
 {
     register_module("conv1", conv1);
     register_module("fc", fc);
@@ -173,6 +183,7 @@ NFNetImpl<Block>::NFNetImpl(
     }
 
 }
+
 
 template <typename Block>
 torch::Tensor NFNetImpl<Block>::forward(torch::Tensor x) {

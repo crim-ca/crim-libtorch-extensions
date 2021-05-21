@@ -3,6 +3,9 @@
 
 #include "nn/models/EfficientNet.h"
 
+namespace vision {
+namespace models {
+
 // FIXME: move to utils
 // USed to generate unique module names
 std::string random_string()
@@ -262,6 +265,7 @@ torch::Tensor EfficientNetV1Impl::forward(torch::Tensor inputs)
     x = _dropout->forward(x);
     return _fc(x);
 }
+
 // Returns output of the final convolution layer
 torch::Tensor EfficientNetV1Impl::extract_features(torch::Tensor inputs)
 {
@@ -283,3 +287,7 @@ torch::Tensor EfficientNetV1Impl::extract_features(torch::Tensor inputs)
     // head
     return _params.activation(_bn1->forward(_conv_head->forward(x)));
 }
+
+
+} // namespace models
+} // namespace vision

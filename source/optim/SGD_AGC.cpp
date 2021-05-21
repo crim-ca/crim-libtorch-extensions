@@ -1,8 +1,5 @@
-
-/*
-WARNING: using libtorch 1.4.1 codebase...
-*/
-#include <stdafx.h>
+#include "stdafx.h"
+#pragma hdrstop
 
 #include <ATen/ATen.h>
 #include <functional>
@@ -40,7 +37,7 @@ torch::Tensor unitwise_norm(torch::Tensor x) {
     return torch::sqrt(torch::sum(x * x, {1,2,3}, keepdim));
 }
 
-SGDAGCOptions::SGDAGCOptions(double learning_rate) :  lr_(learning_rate) {}
+SGDAGCOptions::SGDAGCOptions(double learning_rate) : lr_(learning_rate) {}
 bool operator==(const SGDAGCOptions& lhs, const SGDAGCOptions& rhs) {
     return (lhs.lr() == rhs.lr()) &&
         (lhs.momentum() == rhs.momentum()) &&

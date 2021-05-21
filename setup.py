@@ -129,15 +129,18 @@ class CMakeBuild(BuildExtension):  #(build_ext):
         self.announce("Ext Build Path: {}".format(self.build_temp))
         self.announce("Ext Build Dir:  {}".format(build_dir))
 
-        cmake_args = ["-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(ext_dir),
-                      # "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
-                      "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
-                      "-DWITH_PYTHON=ON",
-                      "-DTORCH_DIR={}".format(self.pytorch_dir),
-                      "-DTORCHVISION_DIR={}".format(self.torchvision_dir),
-                      "-DPYBIND11_DIR={}".format(self.pybind11_dir),
-                      # "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # should be set by FindTorch
-                      ]
+        cmake_args = [
+            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(ext_dir),
+            # "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
+            "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
+            "-DWITH_PYTHON=ON",
+            "-DWITH_TESTS=OFF",       # cannot be simultaneously with Python module
+            "-DWITH_TEST_BENCH=OFF",  # cannot be simultaneously with Python module
+            "-DTORCH_DIR={}".format(self.pytorch_dir),
+            "-DTORCHVISION_DIR={}".format(self.torchvision_dir),
+            "-DPYBIND11_DIR={}".format(self.pybind11_dir),
+            # "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # defined by Torch CXX FLAGS directly (must match)
+        ]
 
         config = "Debug" if self.debug else "Release"
         build_args = ["--config", config]
@@ -158,7 +161,10 @@ class CMakeBuild(BuildExtension):  #(build_ext):
         env = os.environ.copy()
         # configure/generate
         src = os.path.abspath(".")
-        cmd = [self.cmake, "--log-level=DEBUG", src] + cmake_args
+        cmd = [self.cmake]
+        if os.getenv("DISTUTILS_DEBUG") == "1":
+            cmd += ["--log-level=DEBUG"]
+        cmd += [src] + cmake_args
         self.announce("Configure with CMake:\n{}".format(cmd))
         subprocess.check_call(cmd, cwd=build_dir, env=env)
         # compile

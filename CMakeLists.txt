@@ -10,6 +10,7 @@ endif()
 project(${PROJECT_SOLUTION_NAME} LANGUAGES CXX)
 
 set(PROJECT_TARGET crim_libtorch_extensions)
+set(PROJECT_LIBRARY ${PROJECT_TARGET})
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake" FORCE)
 include(cmake/configs.cmake)
@@ -45,28 +46,28 @@ if(NOT __SET_UP_CONFIGURATIONS_DONE)
     #set(CMAKE_EXE_LINKER_FLAGS_PROFILE "...")
 endif()
 
-# external modules
+find_arch()
+list(APPEND PROJECT_DEFINES -DUNICODE)
+if(NOT ${ARCH_POSTFIX} STREQUAL "")
+	list(APPEND PROJECT_DEFINES -DAMD64)	# x64
+endif()
+
+# options
 option(WITH_EXTERNAL_MODULE "Look for external module sources (must define its own cmake files)" OFF)
 set(PROJECT_EXTERNAL_MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external" CACHE STRING "External module location")
-#mark_as_advanced(WITH_EXTERNAL_MODULE)
 if(${WITH_EXTERNAL_MODULE})
 	if(EXISTS "${PROJECT_EXTERNAL_MODULE_DIR}")
 		add_subdirectory("${PROJECT_EXTERNAL_MODULE_DIR}")
 	endif()
 endif()
-
-# tests
+option(WITH_DATA_AUGMENTATION "Include data augmentation operations (Requires OpenCV)" ON)
+option(WITH_TEST_BENCH "Build TestBench CLI utility." ON)
 option(WITH_TESTS "Build tests modules" OFF)
-if(WITH_TESTS)
-    # FIXME: any tests to add?
-endif()
+option(WITH_PYTHON "Enable Python support. Must match compilation of Torch library." ON)
 
 # sources
 set(PROJECT_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
 set(PROJECT_SOURCES_DIR "${PROJECT_SOURCE_DIR}/source")
-
-option(WITH_DATA_AUGMENTATION "Include data augmentation operations (Requires OpenCV)" ON)
-option(WITH_TEST_BENCH "Build TestBench CLI utility." ON)
 
 file(GLOB_RECURSE PROJECT_HEADERS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_INCLUDE_DIR}/*.h")
 file(GLOB_RECURSE PROJECT_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_SOURCES_DIR}/*.cpp")
@@ -119,14 +120,24 @@ list(APPEND EXTERNAL_LIBS "${TORCHVISION_TARGETS}")
 list(APPEND EXTERNAL_DLLS "${TORCHVISION_DLLS}")
 
 # depending on Python bindinds or not, create library or module
-option(WITH_PYTHON "Enable Python support. Must match compilation of Torch library." ON)
 message(DEBUG "WITH Python? ${WITH_PYTHON}")
 if(${WITH_PYTHON})
+    if(${WTIH_PYTHON} AND (${WITH_TESTS} OR ${WITH_TEST_BENCH}))
+        message(FATAL "Cannot enable simultaneous Tests/TestBench and Python modules!")
+    endif()
+
     # find Python and pybind required to generate bindings
     find_package(Python3 COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE})
     list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})
     list(APPEND EXTERNAL_LIBS ${Python_LIBRARIES})
 
+    if(NOT "${pybind_DIR}" STREQUAL "")
+        if("${PYBIND11_DIR}" STREQUAL "")
+            set(PYBIND11_DIR "${pybind_DIR}")
+        endif()
+        mark_as_advanced(FORCE pybind11_DIR)
+        mark_as_advanced(CLEAR PYBIND11_DIR)
+    endif()
     if(NOT EXISTS ${PYBIND11_DIR})
         message(FATAL "Must set PYBIND11_DIR")
     endif()
@@ -154,7 +165,7 @@ if(${WITH_PYTHON})
     remove_definitions(-DNO_PYTHON)
     # no bindings added if compiled directly for use in C++ only
 else()
-    add_library(${PROJECT_TARGET} ${PROJECT_LIBRARY_TYPE} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
+    add_library(${PROJECT_LIBRARY} ${PROJECT_LIBRARY_TYPE} ${PROJECT_HEADERS} ${PROJECT_SOURCES})
 endif()
 
 # library
@@ -186,6 +197,12 @@ message(DEBUG "===========================================")
 message_pkg_refs("${PROJECT_TARGET}" "${PROJECT_DEFINES}" "${PROJECT_HEADERS}" "${PROJECT_SOURCES}"
                  "${EXTERNAL_DEPS}" "${EXTERNAL_LIBS}" "${EXTERNAL_DLLS}")
 message(DEBUG "===========================================")
+
+# tests
+if(WITH_TESTS)
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/tests")
+    message(DEBUG "===========================================")
+endif()
 
 # utilities
 message(DEBUG "WITH TestBench? ${WITH_TEST_BENCH}")

@@ -23,4 +23,4 @@ class IResizableModel : IBaseModel
 {
 public:
     virtual void resizeLastLayer(size_t outputCount) = 0;
-}
+};

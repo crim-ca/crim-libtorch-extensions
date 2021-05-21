@@ -1,10 +1,12 @@
-# EfficientNet LibTorch
+# CRIM LibTorch Extensions
 
-EfficientNet model implementation using `libtorch` ([PyTorch][pytorch] C++ sources) with Python/C++ bindings.
+Provides multiple algorithm implementation with Python/C++ bindings
+as extensions to `libtorch` ([PyTorch][pytorch] C++ sources).
 
-[pytorch]: https://github.com/pytorch/pytorch
-
+- [Included Extensions](#included-extensions)
 - [Build and Install](#build-and-install)
+  - [Compile C++ Only](#compile-c-only)
+  - [Compile Python Bindings](#compile-python-bindings)
 - [Usage](#usage)
 - [Development notes](#development-notes)
   - [Precompiled headers](#precompiled-headers)
@@ -15,21 +17,41 @@ EfficientNet model implementation using `libtorch` ([PyTorch][pytorch] C++ sourc
   - [ImportError `generic_type` with Unknown Reference](#importerror-generic_type-with-unknown-reference)
   - [Unrecognized Symbol Error](#unrecognized-symbol-error)
 
+[CLI11]: https://github.com/CLIUtils/CLI11
+[pytorch]: https://github.com/pytorch/pytorch
+[torchvision]: https://github.com/pytorch/vision
+
+## Included Extensions
+
+- Models:
+  - *EfficientNet* (variants: B0-B7 and custom) <br>
+    Adaptation from [EfficientNet-PyTorch](https://github.com/lukemelas/EfficientNet-PyTorch)
+
+  - *NFNet* - Normalizer-Free Networks (variants: 18, 34, 50, 101, 152 and custom) <br>
+    Adaptation from [nfnets-pytorch](https://github.com/vballoli/nfnets-pytorch)
+
+- Optimizers
+  - *SGD ADC* - Stochastic Gradient Descent with Adaptive Gradient Clipping <br>
+    Adaptation from [nfnets-pytorch](https://github.com/vballoli/nfnets-pytorch)
+
 ## Build and Install
 
-To install the package, you must first build the dependencies.
-You will need to define the paths to the relevant libraries compiled for your system:
+The source code provides 2 different installation modes:
+
+- Exclusive C++ library, with optional CLI `TestBench` and `tests` executables
+- Python package with module bindings to C++ implementations.
+
+In both cases, there are common settings to define.
+These require that you first build the dependencies prior to installing any variant.
+
+You will need to define the below paths to the relevant libraries compiled for your system.
+Then, move on to the next sub-section according to the variant you want to compile.
 
 | Variable           | Description                                               |
 | ------------------ | --------------------------------------------------------- |
-| TORCH_DIR          | Installation path of the Torch C++ library compiled from sources (or precompiled matching your system).  |
-| TORCHVISION_DIR    | Installation path of the TorchVision C++ library compiled from sources (or precompiled matching your system).  |
-| PYBIND11_DIR       | Installation path of PyBind11 library <br> (hint: can reuse PyTorch's `third_party` submodule)  |
-| PYTHON_EXECUTABLE  | Path to the Python binary to find dependencies, headers and other references. <br> (RECOMMENDED: use virtual environment, e.g.: `conda`)   |
-
-**Hint**
-Sources of [PyTorch][pytorch] provide a `setup.py` script that helps build and install C++ libraries by wrapping
-CMake and Ninja. A similar procedure is used for this repository extensions.
+| TORCH_DIR          | Installation path of Torch C++ library compiled from sources (or precompiled matching your system).  |
+| TORCHVISION_DIR    | Installation path of TorchVision C++ library compiled from sources (or precompiled matching your system).  |
+| OPENCV_DIR         | Installation path of OpenCV C++ library (needed if using `DataAugmentation`, `TestBench` CLI or `tests`) |
 
 **Note**
 For backward compatibility, `PYTORCH_DIR` is also used as alias to `TORCH_DIR`.
@@ -37,7 +59,46 @@ The `TORCH_DIR` format should be preferred since variable names employed by CMak
 within [PyTorch][pytorch] sources use this convention.
 
 **Note**
-To have GPU-enabled runtime, make sure that PyTorch and EfficientNet libraries all find references to CUDA/cuDNN.
+To have GPU-enabled runtime, make sure that all libraries find references to CUDA/cuDNN.
+Any missing references to dependencies along the way will reduce performances of the final result.
+
+### Compile C++ Only
+
+| Variable           | Description                                               |
+| ------------------ | --------------------------------------------------------- |
+| CLI11_DIR          | Installation path of [CLI11][CLI11] library (required only by `TestBench` CLI) <br>  |
+
+You can then call `CMake` as follows:
+
+```shell
+mkdir build
+cd build
+cmake ..
+```
+
+You can pass any missing variables as follows:
+
+```shell
+cmake -D<SOME_VAR>=<PATH> ..
+```
+
+If you are having problems figuring out where things go wrong, you can try with debug output:
+
+```shell
+cmake --log-level=debug ..
+```
+
+### Compile Python Bindings
+
+| Variable           | Description                                               |
+| ------------------ | --------------------------------------------------------- |
+| PYBIND11_DIR       | Installation path of PyBind11 library <br> (hint: can reuse PyTorch's `third_party` submodule)  |
+| PYTHON_EXECUTABLE  | Path to the Python binary to find dependencies, headers and other references. <br> (RECOMMENDED: use virtual environment, e.g.: `conda`)   |
+
+**Hint**
+Sources of [PyTorch][pytorch] and [TorchVision][torchvision] provide a `setup.py` script that helps build and install
+bindings from C++ libraries by automatically wrapping the process with `CMake` and `Ninja`.
+A similar procedure is used for extensions in this repository.
 
 Once the above variables where defined, you must activate your environment, and then install the package.
 This process has been simplified by wrapping the C++ Extension with `CMake` through the `setup.py`.
@@ -45,6 +106,12 @@ This process has been simplified by wrapping the C++ Extension with `CMake` thro
 ``` shell
 conda activate <myenv>
 python setup.py install
+```
+
+To enable debug log outputs, employ the following method:
+
+``` shell
+DISTUTILS_DEBUG=1 python setup.py install
 ```
 
 Installation of the packages in the activated environment will be processed. If any problem occurs, refer
@@ -65,8 +132,8 @@ Python 3.7.7 (default, May  7 2020, 21:25:33)
 [GCC 7.3.0] :: Anaconda, Inc. on linux
 Type "help", "copyright", "credits" or "license" for more information.
 
->>> import efficientnet_libtorch
->>> efficientnet_libtorch.activation.swish
+>>> import crim_libtorch_extensions
+>>> crim_libtorch_extensions.activation.swish
 <built-in method swish of PyCapsule object at 0x7f109a3eecf0>
 >>>
 ```
@@ -77,8 +144,10 @@ Type "help", "copyright", "credits" or "license" for more information.
 
 Every `*.cpp` file must start with these two lines (including before any comment):
 
-    #include "stdafx.h"
-    #pragma hdrstop
+```c++
+#include "stdafx.h"
+#pragma hdrstop
+```
 
 This ensures the file uses precompiled headers and includes basic required dependencies (`Windows.h`) and defines
 when corresponding platform and build options are detected.
@@ -93,7 +162,7 @@ Using those definitions in a `conda` activate script
 (e.g.: `<CONDA_PREFIX>/etc/conda/activate.d/gcc.sh` or other shell script)
 will avoid having to run this step manually each time.
 
-``` shell
+```shell
 # use CONDA_PREFIX that is generated by 'conda activate <myenv>'
 export CMAKE_EXECUTABLE="/usr/bin/cmake"
 export CMAKE_PREFIX_PATH="${CONDA_PREFIX}"
@@ -106,7 +175,7 @@ This error can sometime occur when attempting to find CUDA libraries.
 
 Simply define the following in your environment:
 
-``` shell
+```shell
 export CUDA_NVRTC_LIB="<CUDA_PATH>/include/nvrtc.h"
 ```
 
@@ -118,14 +187,14 @@ Where `<CUDA_PATH>` is the same as matched references in `CMake` (e.g.: `/usr/lo
 
 Whenever an error in a similar form as the following occurs:
 
-``` python
+```python
 ImportError: generic_type: type "EfficientNet" referenced unknown base type "torch::nn::Module"
 ```
 
 It means that `torch` was not properly imported *before* importing the library extensions.
 Because linking is done dynamically against `torch`, it must always be imported first as follows:
 
-``` python
+```python
 import torch
 import crim_libtorch_extensions
 ```
