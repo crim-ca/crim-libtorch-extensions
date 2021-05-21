@@ -3,6 +3,10 @@
 Provides multiple algorithm implementation with Python/C++ bindings
 as extensions to `libtorch` ([PyTorch][pytorch] C++ sources).
 
+<img alt="version-0.0.0" src="https://img.shields.io/badge/version-0.0.0-blue"/> <br>
+______
+<br>
+
 - [Included Extensions](#included-extensions)
 - [Build and Install](#build-and-install)
   - [Compile C++ Only](#compile-c-only)

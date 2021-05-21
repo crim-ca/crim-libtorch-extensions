@@ -12,6 +12,7 @@ namespace py = pybind11;
 
 #include "nn/models/EfficientNet.h"
 #include "nn/modules/activation.h"
+using namespace torch::nn;
 using namespace vision::models;
 
 
@@ -19,16 +20,24 @@ using namespace vision::models;
 PYBIND11_MODULE(crim_torch_extensions, module) {
     py::doc("EfficientNet PyTorch extension with Python/C++ bindings.");
 
+    py::module_ mod_nn = module.def_submodule("nn", "Neural Network utilities.");
+    py::module_ mod_vision = module.def_submodule("vision", "Vision related utilities.");
+    py::module_ mod_vis_models = mod_vision.def_submodule("models", "Vision models.");
+
     /*
         Activation Functions
     */
-    py::module_ mod_activation = module.def_submodule("activation", "Activation functions.");
+    py::module_ mod_activation = mod_nn.def_submodule("activation", "Activation functions.");
 
     // std::function<torch::Tensor(torch::Tensor)> ActivationFunction
     mod_activation.def("swish", &swish, "Swish activation function");
     mod_activation.def("relu6", &relu6, "ReLU6 activation function");
 
-    py::module_ mod_efficientnet = module.def_submodule("efficientnet",
+    /*
+        EfficientNet
+    */
+
+    py::module_ mod_efficientnet = mod_vis_models.def_submodule("efficientnet",
         R"delim(
             EfficientNet implementation.
 
@@ -152,6 +161,11 @@ PYBIND11_MODULE(crim_torch_extensions, module) {
             py::arg("num_classes")
         )
     ;
+
+    /*
+        NFNet
+    */
+    // TODO: implement NFNet bindings
 }
 
 #endif

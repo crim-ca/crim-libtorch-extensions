@@ -155,7 +155,7 @@ public:
     double depth_coefficient = -1;
     double dropout_rate = 0.2;
     int64_t image_size_w, image_size_h;
-    ActivationFunction activation = swish;
+    torch::nn::ActivationFunction activation = torch::nn::swish;
     double drop_connect_rate = 0.2;
     double batch_norm_momentum = 0.99;
     double batch_norm_epsilon = 0.001;

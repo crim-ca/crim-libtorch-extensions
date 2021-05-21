@@ -16,6 +16,7 @@
 #include "nn/models/NFNet.h"
 #include "nn/models/ResNet.h"
 #include "optim/SGD_AGC.h"
+#include "version.h"
 
 #include "training.h"
 
@@ -119,11 +120,13 @@ int main(int argc, const char* argv[]) {
     double lr{ 0.001 };
     double clipping{ 0.01 };
     bool verbose{ false };
+    bool version{ false };
 
     CLI::Option* log_opt = app.add_option("-l,--logfile", logfilename, "Output log filename");
     CLI::Option* lr_opt = app.add_option("--lr", lr, "Learning rate");
     CLI::Option* verbose_opt = app.add_flag("-v,--verbose", verbose, "Verbosity");
     CLI::Option* clipping_opt = app.add_option("--clipping", clipping, "Clipping threshold");
+    CLI::Option* version_opt = app.add_flag_function("--version", version, "Print the version number.");
 
     CLI11_PARSE(app, argc, argv);
     //https://stackoverflow.com/questions/428630/assigning-cout-to-a-variable-name
@@ -138,6 +141,10 @@ int main(int argc, const char* argv[]) {
             fileopen = true;
     }
    std::ostream& outlog = (fileopen ? outfile : std::cout);
+
+    if (version) {
+        outlog << std::string(CRIM_TORCH_EXTENSIONS_VERSION) << std::endl;
+    }
 
     bool has_cuda = torch::cuda::is_available();
     if (verbose) {

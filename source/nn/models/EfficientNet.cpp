@@ -269,7 +269,6 @@ torch::Tensor EfficientNetV1Impl::forward(torch::Tensor inputs)
 // Returns output of the final convolution layer
 torch::Tensor EfficientNetV1Impl::extract_features(torch::Tensor inputs)
 {
-    torch::nn::ReLU6 relu6(torch::nn::ReLU6Options().inplace(true));
     //stem
     auto y = _conv_stem->forward(inputs);
     auto x = _params.activation(y);
