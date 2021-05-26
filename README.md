@@ -1,7 +1,7 @@
 # CRIM Torch Extensions
 
 Provides multiple algorithm implementation with Python/C++ bindings
-as extensions to `libtorch` ([PyTorch][pytorch] C++ sources).
+as extensions to `libtorch` ([PyTorch][pytorch] C++ API).
 
 <img alt="version-0.0.0" src="https://img.shields.io/badge/version-0.0.0-blue"/> <br>
 ______
@@ -12,6 +12,8 @@ ______
   - [Compile C++ Only](#compile-c-only)
   - [Compile Python Bindings](#compile-python-bindings)
 - [Usage](#usage)
+  - [Using the Python Module](#using-the-python-module)
+  - [Using the TestBench CLI](#using-the-testbench-cli)
 - [Development notes](#development-notes)
   - [Precompiled headers](#precompiled-headers)
 - [Debugging Compilation Problems](#debugging-compilation-problems)
@@ -43,47 +45,71 @@ ______
 The source code provides 2 different installation modes:
 
 - Exclusive C++ library, with optional CLI `TestBench` and `tests` executables
-- Python package with module bindings to C++ implementations.
+- Python package with module interface bindings to C++ implementations.
 
-In both cases, there are common settings to define.
-These require that you first build the dependencies prior to installing any variant.
+In both cases, there are common settings to define. They are mutually exclusive installation
+methods since Python module generation and install location is usually completely different
+(in targetted Python site-packages) compared to standalone library and CLI application.
+
+Both require that you first build the dependencies prior to installing any variant.
 
 You will need to define the below paths to the relevant libraries compiled for your system.
-Then, move on to the next sub-section according to the variant you want to compile.
 
-| Variable           | Description                                               |
-| ------------------ | --------------------------------------------------------- |
-| TORCH_DIR          | Installation path of Torch C++ library compiled from sources (or precompiled matching your system).  |
-| TORCHVISION_DIR    | Installation path of TorchVision C++ library compiled from sources (or precompiled matching your system).  |
-| OPENCV_DIR         | Installation path of OpenCV C++ library (needed if using `DataAugmentation`, `TestBench` CLI or `tests`) |
+| Variable           | Description
+| ------------------ | ---------------------------------------------------------
+| `TORCH_DIR`        | Installation path of Torch C++ library compiled from sources (or precompiled matching your system).
+| `TORCHVISION_DIR`  | Installation path of TorchVision C++ library compiled from sources (or precompiled matching your system).
+| `OPENCV_DIR`       | Installation path of OpenCV C++ library (needed if using `DataAugmentation`, `TestBench` CLI or `tests`)
 
-**Note**
-For backward compatibility, `PYTORCH_DIR` is also used as alias to `TORCH_DIR`.
-The `TORCH_DIR` format should be preferred since variable names employed by CMake
-within [PyTorch][pytorch] sources use this convention.
+**Note** <br>
+> For backward compatibility, `PYTORCH_DIR` is also used as alias to `TORCH_DIR`.
+  The `TORCH_DIR` format should be preferred since variable names employed by CMake
+  within [PyTorch][pytorch] sources use this convention.
 
-**Note**
-To have GPU-enabled runtime, make sure that all libraries find references to CUDA/cuDNN.
-Any missing references to dependencies along the way will reduce performances of the final result.
+To properly select desired items to build, following options are available.
+Consider using a visualization utility (eg: ``ccmake`` (TUI) or `cmake-gui` (GUI)) to find other available options.
+
+| Option                     | Default | Description
+| -------------------------- | ------- | ------------
+| `WITH_CUDA`                | `ON`    | Enable CUDA support. (see below notes)
+| `WITH_DATA_AUGMENTATION`   | `ON`    | Enable the *Data Augmentation* functions. Required by `TestBench`.
+| `WITH_EXTERNAL_MODULE`     | `OFF`   | *unused for now*
+| `WITH_PRECOMPILED_HEADER`  | `OFF`   | Use `stdafx.h` with `Torch` precompiled headers and relevant defininitions.
+| `WITH_PYTHON`              | `OFF`   | Build the Python module bindings. Cannot be combined with `tests` or `TestBench`.
+| `WITH_TESTS`               | `OFF`   | Build minimal tests of various implementations defined by provided extensions.
+| `WITH_TEST_BENCH`          | `ON`    | Build a CLI `TestBench` utility to run training/testing with the implementations.
+
+**Notes** <br>
+
+1. To have GPU-enabled runtime, make sure that `CMake` finds references to CUDA/cuDNN libraries.
+   Libraries like `Torch` and `TorchVision` will usually indicate if they detected CUDA correctly and enabled them.
+2. Any missing references to dependencies along the way will make them unavailable to following steps.
+   Therefore, for full performances on the final result, all dependencies should be compiled with CUDA libraries.
+3. CUDA-enabled devices must also be available, otherwise stubs will be generated and you won't benefit from
+   actual performance improvements.
+4. Some depenencies employ `USE_CUDA` instead of `WITH_CUDA`. We try to detect both, but in case of problem, define
+   both with the same value to ensure proper detection.
+
+When ready, move on to the next sub-section according to the variant you want to compile.
 
 ### Compile C++ Only
 
-| Variable           | Description                                               |
-| ------------------ | --------------------------------------------------------- |
-| CLI11_DIR          | Installation path of [CLI11][CLI11] library (required only by `TestBench` CLI) <br>  |
+| Variable           | Description
+| ------------------ | ---------------------------------------------------------
+| `CLI11_DIR`        | Installation path of [CLI11][CLI11] library (required only by `TestBench` CLI) <br>
 
 You can then call `CMake` as follows:
 
 ```shell
 mkdir build
 cd build
-cmake ..
+cmake -DWITH_PYTHON=OFF ..
 ```
 
 You can pass any missing variables as follows:
 
 ```shell
-cmake -D<SOME_VAR>=<PATH> ..
+cmake -D<VARIABLE>=<VALUE> ..
 ```
 
 If you are having problems figuring out where things go wrong, you can try with debug output:
@@ -92,29 +118,42 @@ If you are having problems figuring out where things go wrong, you can try with 
 cmake --log-level=debug ..
 ```
 
+**Recommended** <br>
+> Define your installation directory using `CMAKE_INSTALL_PREFIX`.
+  This way, calling `make install` will generate the output libraries and binary applications in the desired location.
+
+Generate and compile the selected features when all configurations are completed as follows:
+
+```shell
+mkdir build && cd build
+cmake ..
+make -j <WORKER-COUNT>
+make install
+```
+
 ### Compile Python Bindings
 
-| Variable           | Description                                               |
-| ------------------ | --------------------------------------------------------- |
-| PYBIND11_DIR       | Installation path of PyBind11 library <br> (hint: can reuse PyTorch's `third_party` submodule)  |
-| PYTHON_EXECUTABLE  | Path to the Python binary to find dependencies, headers and other references. <br> (RECOMMENDED: use virtual environment, e.g.: `conda`)   |
+| Variable            | Description
+| ------------------- | ---------------------------------------------------------
+| `PYBIND11_DIR`      | Installation path of PyBind11 library <br> (hint: can reuse PyTorch's `third_party` submodule)
+| `PYTHON_EXECUTABLE` | Path to the Python binary to find dependencies, headers and other references. <br> (RECOMMENDED: use virtual environment, e.g.: `conda`)
 
-**Hint**
-Sources of [PyTorch][pytorch] and [TorchVision][torchvision] provide a `setup.py` script that helps build and install
-bindings from C++ libraries by automatically wrapping the process with `CMake` and `Ninja`.
-A similar procedure is used for extensions in this repository.
+**Hint** <br>
+> Sources of [PyTorch][pytorch] and [TorchVision][torchvision] provide a `setup.py` script that helps build and install
+  bindings from C++ libraries by automatically wrapping the process with `CMake` and `Ninja`.
+  A similar procedure is used for extensions in this repository.
 
 Once the above variables where defined, you must activate your environment, and then install the package.
-This process has been simplified by wrapping the C++ Extension with `CMake` through the `setup.py`.
+This process has been simplified by wrapping the C++ extensions with `CMake` through the `setup.py`.
 
-``` shell
+```shell
 conda activate <myenv>
 python setup.py install
 ```
 
 To enable debug log outputs, employ the following method:
 
-``` shell
+```shell
 DISTUTILS_DEBUG=1 python setup.py install
 ```
 
@@ -123,14 +162,19 @@ to the logs to find missing pieces of information (often it is due to a missing 
 
 If everything succeeded, you should be able to move on to using the package.
 
-
 ## Usage
+
+### Using the Python Module
+
+**Note** <br>
+> Applicable when compiled with `WITH_PYTHON` and installed by `setup.py`.
+  See [Python compilation steps](#compile-python-bindings).
 
 Once the package was built and installed, it can be called directly in Python.
 
 You can test that references are found correctly using for exemple the following code:
 
-``` shell
+```shell
 ❯ python
 Python 3.7.7 (default, May  7 2020, 21:25:33)
 [GCC 7.3.0] :: Anaconda, Inc. on linux
@@ -141,6 +185,18 @@ Type "help", "copyright", "credits" or "license" for more information.
 <built-in method swish of PyCapsule object at 0x7f109a3eecf0>
 >>>
 ```
+
+### Using the TestBench CLI
+
+**Note** <br>
+> Applicable when compiled with `WITH_TEST_BENCH`. See [C++ compilation steps](#compile-c-only).
+
+```shell
+# call the executable CLI
+<install-location-or-build-dir>/TestBench --help
+```
+
+Refer to the displayed options to select desired models, optimizers, etc. to be evaluated.
 
 ## Development notes
 

@@ -106,7 +106,7 @@ int main(int argc, const char* argv[]) {
     M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\val\\n01484850
     */
 
-    CLI::App app("TestBench for testing EfficientNet, NFNet, etc.");
+    CLI::App app("TestBench for training, evaluating and testing CRIM libtorch extensions (EfficientNet, NFNet, etc.)");
     ArchType archtype { ArchType::ResNet34 };
     app.add_option("-a,--arch", archtype, "Architecture")
         ->required()
@@ -187,7 +187,7 @@ int main(int argc, const char* argv[]) {
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
-                pNet = std::dynamic_pointer_cast<ModelPtr>(p);
+                pNet = std::dynamic_pointer_cast<IModel>(p);
                 //pNet = torch::nn::AnyModule(ResNet34(nb_class));
             }
             break;
@@ -203,7 +203,7 @@ int main(int argc, const char* argv[]) {
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
-                pNet = std::dynamic_pointer_cast<ModelPtr>(p);
+                pNet = std::dynamic_pointer_cast<IModel>(p);
                 //pNet = torch::nn::AnyModule(EfficientNetB0(nb_class));
             }
             break;
@@ -219,7 +219,7 @@ int main(int argc, const char* argv[]) {
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
-                pNet = std::dynamic_pointer_cast<ModelPtr>(p);
+                pNet = std::dynamic_pointer_cast<IModel>(p);
                 //pNet = torch::nn::AnyModule(NFNet34(nb_class));
             }
             break;
