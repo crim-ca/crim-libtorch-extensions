@@ -50,7 +50,7 @@ cv::Mat ImageTransform(
 	double aspect_range,
 	double hflip_ratio,
 	double vflip_ratio,
-	const cv::RNG& rng = cv::RNG()
+	cv::RNG& rng
 );
 
 

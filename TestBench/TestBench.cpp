@@ -126,7 +126,7 @@ int main(int argc, const char* argv[]) {
     CLI::Option* lr_opt = app.add_option("--lr", lr, "Learning rate");
     CLI::Option* verbose_opt = app.add_flag("-v,--verbose", verbose, "Verbosity");
     CLI::Option* clipping_opt = app.add_option("--clipping", clipping, "Clipping threshold");
-    CLI::Option* version_opt = app.add_flag_function("--version", version, "Print the version number.");
+    CLI::Option* version_opt = app.add_option("--version", version, "Print the version number.");
 
     CLI11_PARSE(app, argc, argv);
     //https://stackoverflow.com/questions/428630/assigning-cout-to-a-variable-name
@@ -144,6 +144,7 @@ int main(int argc, const char* argv[]) {
 
     if (version) {
         outlog << std::string(CRIM_TORCH_EXTENSIONS_VERSION) << std::endl;
+        return 0;
     }
 
     bool has_cuda = torch::cuda::is_available();
@@ -157,8 +158,18 @@ int main(int argc, const char* argv[]) {
 
     size_t nb_class = 3;
 
-    using pModel = torch::jit::script::Module; /*IModel torch::nn::Module;*/
-    std::shared_ptr<pModel> pNet;
+    #ifdef USE_BASE_MODEL
+    #ifdef USE_JIT_MODULE
+    using ModelPtr = torch::jit::script::Module; /*IModel torch::nn::Module;*/
+    std::shared_ptr<ModelPtr> pNet;
+    #else
+    using ModelPtr = std::shared_ptr<IModel>;
+    ModelPtr pNet;
+    #endif
+    #else
+    using ModelPtr = IModel;
+    IModel pNet;
+    #endif
 
     //torch::nn::AnyModule pNet;
     std::vector<torch::Tensor> params;
@@ -176,7 +187,7 @@ int main(int argc, const char* argv[]) {
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
-                pNet = std::dynamic_pointer_cast<pModel>(p);
+                pNet = std::dynamic_pointer_cast<ModelPtr>(p);
                 //pNet = torch::nn::AnyModule(ResNet34(nb_class));
             }
             break;
@@ -192,7 +203,7 @@ int main(int argc, const char* argv[]) {
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
-                pNet = std::dynamic_pointer_cast<pModel>(p);
+                pNet = std::dynamic_pointer_cast<ModelPtr>(p);
                 //pNet = torch::nn::AnyModule(EfficientNetB0(nb_class));
             }
             break;
@@ -208,7 +219,7 @@ int main(int argc, const char* argv[]) {
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
-                pNet = std::dynamic_pointer_cast<pModel>(p);
+                pNet = std::dynamic_pointer_cast<ModelPtr>(p);
                 //pNet = torch::nn::AnyModule(NFNet34(nb_class));
             }
             break;
@@ -261,9 +272,10 @@ int main(int argc, const char* argv[]) {
 
 
     // Initialize DataAugmentationDataset class and read data
-    auto custom_dataset_train = DataAugmentationDataset(pair_images_labels.first, pair_images_labels.second, image_size)
+    auto dataAugRNG = cv::RNG();
+    auto custom_dataset_train = DataAugmentationDataset(pair_images_labels.first, pair_images_labels.second, image_size, dataAugRNG)
         .map(torch::data::transforms::Stack<>());
-    auto custom_dataset_valid = DataAugmentationDataset(pair_images_labels_val.first, pair_images_labels_val.second, image_size)
+    auto custom_dataset_valid = DataAugmentationDataset(pair_images_labels_val.first, pair_images_labels_val.second, image_size, dataAugRNG)
         .map(torch::data::transforms::Stack<>());
 
     using RandomDataLoader = torch::data::samplers::RandomSampler;

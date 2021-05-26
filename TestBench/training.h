@@ -30,6 +30,7 @@ using DataSamples = std::pair<std::vector<std::string>, std::vector<Label>>;
  */
 
 #define USE_BASE_MODEL
+//#define USE_JIT_MODULE
 
 #ifdef USE_BASE_MODEL
 using IModel = IBaseModel;
@@ -44,9 +45,10 @@ using IModel = torch::nn::AnyModule;
  *
  * @param location      path where to find the image
  * @param image_size    image resize dimension
+ * @param rng           data augmentation random number generator
  * @return              image read as tensor
  */
-torch::Tensor read_data(std::string location);
+torch::Tensor read_data(std::string location, uint64_t image_size, cv::RNG& rng);
 
 /**
  * @brief Function to return label from int (0, 1 for binary and 0, 1, ..., n-1 for n-class classification) as tensor.
@@ -64,7 +66,7 @@ torch::Tensor read_label(Label label);
  * @param rng               data augmentation random number generator
  * @return                  list of processed images as tensors
  */
-std::vector<torch::Tensor> process_images(std::vector<std::string> list_images, uint64_t image_size, const cv::RNG& rng);
+std::vector<torch::Tensor> process_images(std::vector<std::string> list_images, uint64_t image_size, cv::RNG& rng);
 
 /**
  * @brief Process vector of tensors (labels) read from the list of labels
@@ -81,6 +83,46 @@ std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels);
  * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
  */
 std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(std::vector<std::string> folders_name);
+
+/**
+ * @brief Dataset that loads and pre-processes the images and corresponding labels with data augmentation.
+ */
+class DataAugmentationDataset : public torch::data::Dataset<DataAugmentationDataset> {
+private:
+    /* data */
+    // Should be 2 tensors
+    std::vector<torch::Tensor> states, labels;
+    size_t ds_size;
+    cv::RNG& rng;
+public:
+    /**
+     * @brief Initialize the Data Augmentation Dataset
+     *
+     * @param list_images   images to load and process
+     * @param list_labels   labels mapping of loaded images
+     * @param image_size    resize dimension to process images
+     * @param rng           random number generator employed to randomize data augmentation
+     */
+    DataAugmentationDataset(
+        std::vector<std::string> list_images, std::vector<Label> list_labels, uint64_t image_size, cv::RNG& rng
+    ) : rng(rng)
+    {
+        states = process_images(list_images, image_size, this->rng);
+        labels = process_labels(list_labels);
+        ds_size = states.size();
+    }
+
+    torch::data::Example<> get(size_t index) override {
+        /* This should return {torch::Tensor, torch::Tensor} */
+        torch::Tensor sample_img = states.at(index);
+        torch::Tensor sample_label = labels.at(index);
+        return { sample_img.clone(), sample_label.clone() };
+    };
+
+    torch::optional<size_t> size() const override {
+        return ds_size;
+    };
+};
 
 /**
  * @brief Trains the neural network on our data loader using optimizer.
@@ -101,7 +143,15 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(st
  */
 template<typename Dataloader>
 void train(
-    std::shared_ptr<torch::jit::script::Module/*IModel*/> net,
+    #ifdef USE_BASE_MODEL
+    #ifdef USE_JIT_MODULE
+    std::shared_ptr<torch::jit::script::Module> net,
+    #else
+    std::shared_ptr<IModel> net,
+    #endif
+    #else
+    IModel net,
+    #endif
     /*torch::nn::Linear lin, */
     Dataloader& data_loader_train,
     Dataloader& data_loader_valid,
@@ -112,6 +162,7 @@ void train(
     size_t max_epochs = 2
 );
 
+#if 0
 /**
  * @brief Evaluate trained network inference on test data
  *
@@ -124,52 +175,19 @@ void train(
  */
 template<typename Dataloader>
 void test(
-    std::shared_ptr<torch::jit::script::Module/*IModel*/> net,
+    #ifdef USE_BASE_MODEL
+    #ifdef USE_JIT_MODULE
+    std::shared_ptr<torch::jit::script::Module> net,
+    #else
+    std::shared_ptr<IModel> net,
+    #endif
+    #else
+    IModel net,
+    #endif
     /*torch::nn::Linear lin, */
     Dataloader& loader,
     size_t data_size
 );
-
-/**
- * @brief Dataset that loads and pre-processes the images and corresponding labels with data augmentation.
- */
-class DataAugmentationDataset : public torch::data::Dataset<DataAugmentationDataset> {
-private:
-    /* data */
-    // Should be 2 tensors
-    std::vector<torch::Tensor> states, labels;
-    size_t ds_size;
-    const cv::RNG& rng;
-public:
-    /**
-     * @brief Initialize the Data Augmentation Dataset
-     *
-     * @param list_images   images to load and process
-     * @param list_labels   labels mapping of loaded images
-     * @param image_size    resize dimension to process images
-     * @param rng           random number generator employed to randomize data augmentation
-     */
-    DataAugmentationDataset(
-        std::vector<std::string> list_images, std::vector<Label> list_labels, uint64_t image_size, const cv::RNG& rng
-    ) : rng(rng) {
-        states = process_images(list_images, image_size, this->rng);
-        labels = process_labels(list_labels);
-        ds_size = states.size();
-    }
-    DataAugmentationDataset(std::vector<std::string> list_images, std::vector<Label> list_labels, uint64_t image_size)
-        : DataAugmentationDataset(list_images, list_labels, image_size, cv::RNG()) {}
-
-    torch::data::Example<> get(size_t index) override {
-        /* This should return {torch::Tensor, torch::Tensor} */
-        torch::Tensor sample_img = states.at(index);
-        torch::Tensor sample_label = labels.at(index);
-        return { sample_img.clone(), sample_label.clone() };
-    };
-
-    torch::optional<size_t> size() const override {
-        return ds_size;
-    };
-};
 
 /**
  * @brief Splits data samples into training and validation sets according to specified ratio
@@ -185,5 +203,6 @@ void split_data(
     DataSamples& trainingPairs,
     DataSamples& validationsPairs
 );
+#endif
 
 #endif // __TRAINING_H__
