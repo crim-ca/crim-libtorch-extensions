@@ -187,7 +187,11 @@ int main(int argc, const char* argv[]) {
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
+                #ifdef USE_BASE_MODEL
                 pNet = std::dynamic_pointer_cast<IModel>(p);
+                #else
+                pNet = p;
+                #endif
                 //pNet = torch::nn::AnyModule(ResNet34(nb_class));
             }
             break;
@@ -203,7 +207,11 @@ int main(int argc, const char* argv[]) {
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
+                #ifdef USE_BASE_MODEL
                 pNet = std::dynamic_pointer_cast<IModel>(p);
+                #else
+                pNet = p;
+                #endif
                 //pNet = torch::nn::AnyModule(EfficientNetB0(nb_class));
             }
             break;
@@ -219,7 +227,11 @@ int main(int argc, const char* argv[]) {
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
+                #ifdef USE_BASE_MODEL
                 pNet = std::dynamic_pointer_cast<IModel>(p);
+                #else
+                pNet = p;
+                #endif
                 //pNet = torch::nn::AnyModule(NFNet34(nb_class));
             }
             break;

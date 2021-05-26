@@ -29,7 +29,7 @@ using DataSamples = std::pair<std::vector<std::string>, std::vector<Label>>;
  * @brief Generic model interface with expected shared methods.
  */
 
-#define USE_BASE_MODEL
+//#define USE_BASE_MODEL
 //#define USE_JIT_MODULE
 
 #ifdef USE_BASE_MODEL
