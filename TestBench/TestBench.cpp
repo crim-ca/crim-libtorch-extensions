@@ -280,11 +280,12 @@ int main(int argc, const char* argv[]) {
 
     using RandomDataLoader = torch::data::samplers::RandomSampler;
     size_t batch_size = 4;
+    size_t max_epochs = 2;
     auto data_loader_train = torch::data::make_data_loader<RandomDataLoader>(std::move(custom_dataset_train), batch_size);
     auto data_loader_valid = torch::data::make_data_loader<RandomDataLoader>(std::move(custom_dataset_valid), batch_size);
     auto train_size = custom_dataset_train.size().value();
     auto valid_size = custom_dataset_valid.size().value();
-    train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size, outlog);
+    train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size, outlog, max_epochs);
 
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed_seconds = end_time - start_time;
