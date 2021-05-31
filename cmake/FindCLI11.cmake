@@ -35,6 +35,7 @@ if(EXISTS "${CLI11_INCLUDE_DIR}/CLI/CLI.hpp")
   set(CLI11_TARGETS CLI11::CLI11)
   add_library(CLI11::CLI11 INTERFACE IMPORTED)
   set_target_properties(CLI11::CLI11 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${CLI11_INCLUDE_DIR}")
+  set(CLI11_DIR "${CLI11_INCLUDE_DIR}")
 endif()
 
 # make variable visible if not defined
