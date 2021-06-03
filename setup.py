@@ -11,49 +11,136 @@ import os
 import platform
 import subprocess
 import sys
-from setuptools import Extension, setup
+from setuptools import Extension, find_packages, setup
 from setuptools.command.build_ext import build_ext
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension  #, CppExtension
 
-import torch
 
-
-class CMakeExtension(Extension):
-    def __init__(self, name, sources, *args, **kwargs):
+#class CMakeExtension(CUDAExtension):  #(CppExtension):  #(Extension):
+    #def __init__(self, name, *args, **kwargs):
         # don't invoke the original build_ext for this special extension
-        super().__init__(name, sources=[], *args, **kwargs)
-        self.sources = [os.path.abspath(s) for s in sources]
+        #super().__init__(name, sources=[], *args, **kwargs)
+        # self.sources = [os.path.abspath(s) for s in sources]
 
 
-class CMakeBuild(build_ext):
+class CMakeBuild(BuildExtension):  #(build_ext):
+
     def __init__(self, *args, **kwargs):
         super(CMakeBuild, self).__init__(*args, **kwargs)
-        self.pytorch_dir = os.path.dirname(torch.__file__)
-        self.python_exe = subprocess.check_output(["which", "python"]).decode().strip()
+        self.python_exe = sys.executable
+        self.pytorch_dir = None
+        self.pybind11_dir = None
+        self.cmake = None
+
+    @property
+    def cmake(self):
+        if self._cmake is None:
+            cmake_bin = os.getenv("CMAKE_EXECUTABLE", "cmake")
+            cmake_bin = subprocess.check_output(["which", cmake_bin]).decode().strip()
+            self.announce("CMAKE_EXECUTABLE: {}".format(cmake_bin))
+            self._cmake = cmake_bin
+        return self._cmake
+
+    @cmake.setter
+    def cmake(self, cmake):
+        self._cmake = cmake
+
+    def find_torch_dir(self):
+        """
+        Attempts finding precompiled :mod:`torch`.
+
+        Searches with :envvar:`TORCH_DIR`, :envvar:`TORCH_LIBRARY` or reverts back to preinstalled package via ``pip``.
+        """
+        pytorch_dir = os.getenv("PYTORCH_DIR")
+        if not pytorch_dir:
+            pytorch_dir = os.getenv("TORCH_DIR")
+        pytorch_lib = os.getenv("TORCH_LIBRARY")
+        pytorch_lib_path = "lib/libtorch.so" if platform.system() != "Windows" else "lib/x64/torch.lib"
+        if pytorch_dir and os.path.isdir(pytorch_dir) and os.path.isfile(os.path.join(pytorch_dir, pytorch_lib_path)):
+            pytorch_lib = os.path.join(pytorch_dir, pytorch_lib_path)
+        elif pytorch_lib and os.path.isfile(pytorch_lib) and os.path.isdir(pytorch_lib.replace(pytorch_lib_path, "")):
+            pytorch_dir = pytorch_lib.replace(pytorch_lib_path, "")
+        else:
+            try:
+                import torch  # noqa
+                pytorch_dir = os.path.dirname(torch.__file__)
+                pytorch_lib = os.path.join(pytorch_dir, pytorch_lib_path)
+            except ImportError:
+                sys.stderr.write("Pytorch is required to build this package\n")
+                sys.exit(-1)
+        if not os.path.isdir(pytorch_dir) or not os.path.isfile(pytorch_lib):
+            sys.stderr.write("Pytorch is required to build this package. "
+                             "Set TORCH_DIR for pre-compiled from sources, or install with pip.\n")
+        self.announce("Found PyTorch dir: {}".format(pytorch_dir))
+        return pytorch_dir
+
+    def find_torchvision_dir(self):
+        """
+        Attempts finding precompiled :mod:`torchvision`.
+
+        Searches with :envvar:`TORCHVISION_DIR` or reverts back to preinstalled package via ``pip``.
+        """
+        torchvision_dir = os.getenv("TORCHVISION_DIR")
+        if torchvision_dir and os.path.isdir(torchvision_dir):
+            lib_path = "lib/libtorchvision.so" if platform.system() != "Windows" else "lib/x64/torchvision.lib"
+            torchvision_lib = os.path.join(torchvision_dir, lib_path)
+            if not os.path.isfile(torchvision_lib):
+                torchvision_lib = None
+        else:
+            try:
+                import torchvision  # noqa
+                torchvision_dir = os.path.dirname(torch.__file__)
+                torchvision_lib = os.path.join(torchvision_dir, pytorch_lib_path)
+            except ImportError:
+                torchvision_dir = None
+        if not torchvision_lib:
+            sys.stderr.write("TorchVision is required to build this package\n")
+            sys.exit(-1)
+        self.announce("Found TorchVision dir: {}".format(torchvision_dir)
+        return torchvision_dir
+
+    def find_pybind_dir(self):
+        pybind_dir =  os.getenv("PYBIND11_DIR", "")
+        if not os.path.isdir(pybind_dir):
+            raise RuntimeError("Library pybind11 required but not valid: [{}]".format(pybind_dir))
+        self.announce("Found PyBind11 dir: {}".format(pybind_dir))
+        self.pybind11_dir = pybind_dir
+        return self.pybind11_dir
 
     def run(self):
         try:
-            _ = subprocess.check_output(["cmake", "--version"])
+            _ = subprocess.check_output([self.cmake, "--version"])
         except OSError:
             raise RuntimeError("CMake must be installed to build the following extensions: " +
                                ", ".join(ext.name for ext in self.extensions))
 
-        try:
-            import torch
-        except ImportError:
-            sys.stderr.write("Pytorch is required to build this package\n")
-            sys.exit(-1)
-
+        self.pytorch_dir = self.find_torch_dir()
+        self.pybind11_dir = self.find_pybind_dir()
+        self.torchvis_dir = self.find_torchvision_dir()
         for ext in self.extensions:
             self.build_cmake(ext)
 
     def build_cmake(self, ext):
-        ext_dir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-        cmake_args = ["-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(ext_dir),
-                      "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
-                      "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
-                      "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # for kenlm - avoid seg fault
-                      # "-DPYTHON_EXECUTABLE=".format(sys.executable),
-                      ]
+        ext_path = self.get_ext_fullpath(ext.name)
+        ext_dir = os.path.abspath(os.path.dirname(ext_path))
+        build_dir = os.path.join(ext_dir, self.build_temp)
+        self.announce("Extension Path: {}".format(ext_path))
+        self.announce("Extension Dir:  {}".format(ext_dir))
+        self.announce("Ext Build Path: {}".format(self.build_temp))
+        self.announce("Ext Build Dir:  {}".format(build_dir))
+
+        cmake_args = [
+            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={}".format(ext_dir),
+            # "-DCMAKE_PREFIX_PATH={}".format(self.pytorch_dir),
+            "-DPYTHON_EXECUTABLE:FILEPATH={}".format(self.python_exe),
+            "-DWITH_PYTHON=ON",
+            "-DWITH_TESTS=OFF",       # cannot be simultaneously with Python module
+            "-DWITH_TEST_BENCH=OFF",  # cannot be simultaneously with Python module
+            "-DTORCH_DIR={}".format(self.pytorch_dir),
+            "-DTORCHVISION_DIR={}".format(self.torchvision_dir),
+            "-DPYBIND11_DIR={}".format(self.pybind11_dir),
+            # "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0",  # defined by Torch CXX FLAGS directly (must match)
+        ]
 
         config = "Debug" if self.debug else "Release"
         build_args = ["--config", config]
@@ -69,28 +156,113 @@ class CMakeBuild(build_ext):
         else:
             cmake_args += ["-DCMAKE_BUILD_TYPE=" + config]
 
-        if not os.path.exists(self.build_temp):
-            os.makedirs(self.build_temp)
-        cwd = os.getcwd()
-        os.chdir(os.path.dirname(ext_dir))
-        self.spawn(["cmake", " ".join(ext.sources)] + cmake_args)
+        if not os.path.exists(build_dir):
+            os.makedirs(build_dir)
+        env = os.environ.copy()
+        # configure/generate
+        src = os.path.abspath(".")
+        cmd = [self.cmake]
+        if os.getenv("DISTUTILS_DEBUG") == "1":
+            cmd += ["--log-level=DEBUG"]
+        cmd += [src] + cmake_args
+        self.announce("Configure with CMake:\n{}".format(cmd))
+        subprocess.check_call(cmd, cwd=build_dir, env=env)
+        # compile
         if not self.dry_run:
-            self.spawn(["cmake", "--build", self.build_temp, "--", "-j{}".format(multiprocessing.cpu_count())])
-        os.chdir(cwd)
+            jobs = os.getenv("CMAKE_JOBS", multiprocessing.cpu_count())
+            cmd = [self.cmake, "--build", build_dir, "--", "-j{}".format(jobs)]
+            subprocess.check_call(cmd, cwd=build_dir, env=env)
 
 
+with open("README.md") as f:
+    README = f.read()
+
+with open("VERSION") as ver:
+    VERSION = ver.readline().strip()
+
+with open("requirements.txt") as r:
+    REQUIRES = []
+    for line in r.readlines():
+        if line.startswith("#"):
+            continue
+        REQUIRES.append(line.strip())
+
+# package will be available as import with that name
+#   submodules are defined on the C++ side by pybind11
+#   extension name must match with "python/bindings.cpp" and "CMakeLists.txt"
+TORCH_EXTENSION_NAME = "crim_torch_extensions"
 setup(
-    name="efficientnet",
-    description="EfficientNet C++ implementation with PyTorch integration as extension.",
+    name=TORCH_EXTENSION_NAME,
+    version=VERSION,
+    description="Extension implementations with PyTorch C++ (libtorch) and Python bindings.",
+    long_description=README,
     author="CRIM",
+    maintainer="Francis Charette-Migneault",
+    maintainer_email="francis.charette-migneault@crim.ca",
+    contact="CRIM",
+    contact_email="info@crim.ca",
+    # license="",  # FIXME: pick a license for publish, also adjust classifier below
+    keywords=", ".join([
+        "PyTorch",
+        "libtorch",
+        "extensions",
+        "EfficientNet",
+        "",
+    ]),
+    url="https://www.crim.ca/stash/scm/visi/efficientnet-libtorch.git",
+    zip_safe=False,
+    python_requires=">=3.6, <4",
+    install_requires=REQUIRES,
+    packages=find_packages(exclude=["tests"]),
+    package_data={"": ["*.so"]},
+    test_suite="tests",
+    # tests_require=TEST_REQUIREMENTS,
     ext_modules=[
-        CMakeExtension(
-            name="efficientnet_cpp",
-            sources=["."],
+        CUDAExtension(
+            name=TORCH_EXTENSION_NAME,
+            sources=[],
             extra_compile_args=[],
         )
     ],
     cmdclass={
         "build_ext": CMakeBuild
-    }
+    },
+    platforms=[
+        "linux_x86_64",
+        # "win32"
+    ],
+    # https://pypi.org/classifiers/
+    classifiers=[
+        "Development Status :: 2 - Pre-Alpha",
+        # "Development Status :: 3 - Alpha",
+        # "Development Status :: 4 - Beta",
+        "Environment :: Console",   # CLI11 utility
+        "Environment :: GPU",
+        "Environment :: GPU :: NVIDIA CUDA ",
+        "Environment :: GPU :: NVIDIA CUDA :: 11.1",  # others could work, but this one tested
+        "Environment :: Win32 (MS Windows)",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Education"
+        "Intended Audience :: Science/Research",
+        # "License :: OSI Approved :: ??? License"   # MIT or Apache ?,
+        "Natural Language :: English",
+        # to validate Windows
+        "Operating System :: Microsoft :: Windows",
+        "Operating System :: Microsoft :: Windows :: Windows 10",
+        "Operating System :: Unix",
+        "Operating System :: POSIX",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: C++",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
+        "Topic :: Scientific/Engineering",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Image Processing",
+        "Topic :: Scientific/Engineering :: Image Recognition",
+        "Topic :: Software Development :: Libraries",
+        "Topic :: Software Development :: Libraries :: Python Modules"
+    ],
 )

@@ -6,6 +6,7 @@
 # This will define the following variables:
 #
 #   TORCH_FOUND					- True if the system has the Torch library
+#	TORCH_ROOT					- Root directory of found library
 #   TORCH_INCLUDE_DIRECTORIES   - The include directories for torch
 #   TORCH_LIBRARIES 			- Static libraries to link against
 #	TORCH_DLLS					- Dynamic libraries for runtime execution
@@ -13,18 +14,31 @@
 # and the following imported targets::
 #
 #     Torch
+#
+# To locate installation path of Torch, following variables are employed
+#
+#	TORCH_INSTALL_PREFIX
+#	TORCH_DIR
+#	Torch_DIR
+#
+# First match (in that order) is used.
+#
 
 cmake_minimum_required(VERSION 3.6.0 FATAL_ERROR)
 
 # handle Torch_DIR/TORCH_DIR variants
-if(Torch_DIR AND NOT TORCH_DIR)
+if(EXISTS Torch_DIR AND NOT TORCH_DIR)
 	set(TORCH_DIR "${Torch_DIR}")
+endif()
+if (NOT EXISTS "${TORCH_DIR}" AND EXISTS "${PROJECT_THIRD_PARTY_DIR}")
+    set(TORCH_DIR "${PROJECT_THIRD_PARTY_DIR}")
 endif()
 
 # attempt to find some reference directory
 #   using cmake config
 find_file(TORCH_CMAKE_CFG TorchConfig.cmake
 	PATHS
+		"${TORCH_INSTALL_PREFIX}"
 		"${TORCH_DIR}"
 		"${TORCH_DIR}/share/cmake/Torch"
 		"${TORCH_DIR}/cmake/Torch"
@@ -33,9 +47,9 @@ find_file(TORCH_CMAKE_CFG TorchConfig.cmake
 		"${TORCH_ROOT}/share/cmake/Torch"
 		"${TORCH_ROOT}/cmake/Torch"
 		"${TORCH_ROOT}/Torch"
-		"${CONFIG_THIRD_PARTY_DIR}/share/cmake/Torch"
-		"${CONFIG_THIRD_PARTY_DIR}/cmake/Torch"
-		"${CONFIG_THIRD_PARTY_DIR}/Torch"
+		"${PROJECT_THIRD_PARTY_DIR}/share/cmake/Torch"
+		"${PROJECT_THIRD_PARTY_DIR}/cmake/Torch"
+		"${PROJECT_THIRD_PARTY_DIR}/Torch"
 )
 if(EXISTS "${TORCH_CMAKE_CFG}")
     if(NOT TARGET Torch)
@@ -113,8 +127,11 @@ set(TORCH_INCLUDE_DIRECTORIES
 mark_as_advanced(TORCH_INCLUDE_DIRECTORIES)
 
 ### Optionally, link CUDA
-if(NOT CUDA_FOUND)
-	find_package(CUDA)
+option(USE_CUDA "Use CUDA enabled Torch." ON)
+if(USE_CUDA)
+	if(NOT CUDA_FOUND)
+		find_package(CUDA)
+	endif()
 endif()
 if(CUDA_FOUND)
 	add_definitions(-DCUDA_FOUND)
@@ -141,8 +158,9 @@ endif(CUDA_FOUND)
 
 add_definitions(-DNO_PYTHON)
 if(NOT TARGET Torch)
-    add_library(Torch SHARED IMPORTED)
-    #add_library(Torch)
+    set(TORCH_LIBRARY_TYPE "SHARED" CACHE STRING "Torch library type to link against.")
+    set_property(CACHE TORCH_LIBRARY_TYPE PROPERTY STRINGS SHARED STATIC)
+    add_library(Torch ${TORCH_LIBRARY_TYPE} IMPORTED)
 endif()
 if(MSVC)
 	set_target_properties(Torch PROPERTIES IMPORTED_IMPLIB "${TORCH_LIBRARY}")
@@ -163,12 +181,21 @@ endif()
 list(FILTER TORCH_LIBRARIES EXCLUDE REGEX ".*NOTFOUND")
 list(FILTER TORCH_DLLS EXCLUDE REGEX ".*NOTFOUND")
 
+if(EXISTS ${TORCH_INCLUDE_DIR})
+	get_filename_component(TORCH_ROOT ${TORCH_INCLUDE_DIR} DIRECTORY)
+endif()
+
 include(${CMAKE_ROOT}/Modules/FindPackageHandleStandardArgs.cmake)
-find_package_handle_standard_args(TORCH
+if (NOT EXISTS ${TORCH_LIBRARY})
+    message(WARNING "Could not find Torch library. Define TORCH_DIR or TORCH_INSTALL_PREFIX with install location.")
+endif()
+find_package_handle_standard_args(Torch
     REQUIRED_VARS
+		TORCH_ROOT
         TORCH_LIBRARY
         TORCH_INCLUDE_DIR
     VERSION_VAR TORCH_VERSION
 )
+message(DEBUG "Torch root: ${TORCH_ROOT}")
 message(DEBUG "Torch libs: ${TORCH_LIBRARIES}")
 message(DEBUG "Torch dlls: ${TORCH_DLLS}")

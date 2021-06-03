@@ -1,6 +1,6 @@
 
 # Finds the current architecture of the system
-# Defines following variables for the calling scope: 
+# Defines following variables for the calling scope:
 # 	- ARCH_DIR
 #	- ARCH_POSTFIX
 function(find_arch)
@@ -15,3 +15,54 @@ function(find_arch)
 		add_definitions(-DWIN64)
 	endif()
 endfunction(find_arch)
+
+
+function(message_items file_list  # prefix
+)
+    set(extra_macro_args ${ARGN})
+    list(LENGTH extra_macro_args num_extra_args)
+    if (${num_extra_args} GREATER 0)
+        list(GET extra_macro_args 0 _prefix)
+    else()
+        set(_prefix "Found")
+    endif()
+
+    list(APPEND CMAKE_MESSAGE_INDENT "  ")
+        foreach(file ${file_list})
+            message(DEBUG "${_prefix} ${file}")
+        endforeach()
+    list(POP_BACK CMAKE_MESSAGE_INDENT)
+endfunction(message_items)
+
+
+function(message_pkg_refs pkg_name pkg_defs pkg_incl pkg_srcs pkg_deps pkg_libs pkg_dlls)
+    message(DEBUG "${pkg_name}")
+    list(APPEND CMAKE_MESSAGE_INDENT "  ")
+    set(_prefix "-")
+    if(NOT "${pkg_defs}" STREQUAL "")
+        message(DEBUG "DEFINES:")
+        message_items("${pkg_defs}" "${_prefix}")
+    endif()
+    if(NOT "${pkg_incl}" STREQUAL "")
+        message(DEBUG "INCLUDE:")
+        message_items("${pkg_incl}" "${_prefix}")
+    endif()
+    if(NOT "${pkg_srcs}" STREQUAL "")
+        message(DEBUG "SOURCES:")
+        message_items("${pkg_srcs}" "${_prefix}")
+    endif()
+    if(NOT "${pkg_deps}" STREQUAL "")
+        message(DEBUG "DEPENDENCIES:")
+        message_items("${pkg_deps}" "${_prefix}")
+    endif()
+    if(NOT "${pkg_libs}" STREQUAL "")
+        message(DEBUG "LIBS:")
+        message_items("${pkg_libs}" "${_prefix}")
+    endif()
+    if(NOT "${pkg_dlls}" STREQUAL "")
+        message(DEBUG "DLLS:")
+        message_items("${pkg_dlls}" "${_prefix}")
+    endif()
+    list(POP_BACK CMAKE_MESSAGE_INDENT)
+endfunction(message_pkg_refs)
+

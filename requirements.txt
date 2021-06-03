@@ -1,2 +1,4 @@
-torch
+# following are not 'REQUIED' as compiled libs from sources can (SHOULD?) be employed
+#torch
 #torchvision
+wheel

@@ -5,9 +5,15 @@
 ## Build artifacts
 **/CMakeCache.txt
 **/CMakeFiles/
+*.egg
+*.egg-info/
+**/__pycache__/
 build/
-efficientnet.egg-info
+dist/
 install/
+*.so
+*.a
+*.o
 
 ## External module common locations
 external/
