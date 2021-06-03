@@ -1,6 +1,6 @@
 ## CHANGES
 
-[Unreleased](https://www.crim.ca/stash/projects/VISI/repos/efficientnet-libtorch) (latest)
+[Unreleased](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions) (latest)
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 

@@ -81,26 +81,27 @@ class CMakeBuild(BuildExtension):  #(build_ext):
         Searches with :envvar:`TORCHVISION_DIR` or reverts back to preinstalled package via ``pip``.
         """
         torchvision_dir = os.getenv("TORCHVISION_DIR")
+        torchvision_lib = None
+        torchvision_lib_path = "lib/libtorchvision.so" if platform.system() != "Windows" else "lib/x64/torchvision.lib"
         if torchvision_dir and os.path.isdir(torchvision_dir):
-            lib_path = "lib/libtorchvision.so" if platform.system() != "Windows" else "lib/x64/torchvision.lib"
-            torchvision_lib = os.path.join(torchvision_dir, lib_path)
+            torchvision_lib = os.path.join(torchvision_dir, torchvision_lib_path)
             if not os.path.isfile(torchvision_lib):
                 torchvision_lib = None
         else:
             try:
                 import torchvision  # noqa
-                torchvision_dir = os.path.dirname(torch.__file__)
-                torchvision_lib = os.path.join(torchvision_dir, pytorch_lib_path)
+                torchvision_dir = os.path.dirname(torchvision.__file__)
+                torchvision_lib = os.path.join(torchvision_dir, torchvision_lib_path)
             except ImportError:
                 torchvision_dir = None
         if not torchvision_lib:
             sys.stderr.write("TorchVision is required to build this package\n")
             sys.exit(-1)
-        self.announce("Found TorchVision dir: {}".format(torchvision_dir)
+        self.announce("Found TorchVision dir: {}".format(torchvision_dir))
         return torchvision_dir
 
     def find_pybind_dir(self):
-        pybind_dir =  os.getenv("PYBIND11_DIR", "")
+        pybind_dir = os.getenv("PYBIND11_DIR", "")
         if not os.path.isdir(pybind_dir):
             raise RuntimeError("Library pybind11 required but not valid: [{}]".format(pybind_dir))
         self.announce("Found PyBind11 dir: {}".format(pybind_dir))
@@ -207,9 +208,9 @@ setup(
         "libtorch",
         "extensions",
         "EfficientNet",
-        "",
+        "NFNet",
     ]),
-    url="https://www.crim.ca/stash/scm/visi/efficientnet-libtorch.git",
+    url="https://www.crim.ca/stash/scm/visi/crim-libtorch-extensions.git",
     zip_safe=False,
     python_requires=">=3.6, <4",
     install_requires=REQUIRES,

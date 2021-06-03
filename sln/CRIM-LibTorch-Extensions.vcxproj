@@ -41,13 +41,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">H:\projets\efficientnet-libtorch\build\Debug\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">H:\projets\crim-libtorch-extensions\build\Debug\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">EfficientNet.dir\Debug\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">EfficientNet</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.exe</TargetExt>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
     <GenerateManifest Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</GenerateManifest>
-    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">H:\projets\efficientnet-libtorch\build\Release\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">H:\projets\crim-libtorch-extensions\build\Release\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">EfficientNet.dir\Release\</IntDir>
     <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">EfficientNet</TargetName>
     <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
@@ -56,7 +56,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>c:\Program Files (x86)\torchvision\include;D:\opencv\install\include;H:\projets\efficientnet-libtorch;H:\projets\efficientnet-libtorch\include;D:\libtorch\libtorch-1.8.1-release\include\torch\csrc\api\include;D:\libtorch\libtorch-1.8.1-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>c:\Program Files (x86)\torchvision\include;D:\opencv\install\include;H:\projets\crim-libtorch-extensions;H:\projets\crim-libtorch-extensions\include;D:\libtorch\libtorch-1.8.1-release\include\torch\csrc\api\include;D:\libtorch\libtorch-1.8.1-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <CompileAs>CompileAsCpp</CompileAs>
@@ -75,10 +75,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;WITH_CUDA;CMAKE_INTDIR=\"Debug\";EfficientNet_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>H:\projets\efficientnet-libtorch;H:\projets\efficientnet-libtorch\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>H:\projets\crim-libtorch-extensions;H:\projets\crim-libtorch-extensions\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>H:\projets\efficientnet-libtorch;H:\projets\efficientnet-libtorch\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>H:\projets\crim-libtorch-extensions;H:\projets\crim-libtorch-extensions\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -97,8 +97,8 @@
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <ImportLibrary>H:/projets/efficientnet-libtorch/build/Debug/EfficientNet.lib</ImportLibrary>
-      <ProgramDataBaseFile>H:/projets/efficientnet-libtorch/build/Debug/EfficientNet.pdb</ProgramDataBaseFile>
+      <ImportLibrary>H:/projets/crim-libtorch-extensions/build/Debug/EfficientNet.lib</ImportLibrary>
+      <ProgramDataBaseFile>H:/projets/crim-libtorch-extensions/build/Debug/EfficientNet.pdb</ProgramDataBaseFile>
       <SubSystem>Console</SubSystem>
     </Link>
     <ProjectReference>
@@ -107,7 +107,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>c:\Program Files (x86)\torchvision\include;D:\opencv\install\include;H:\projets\efficientnet-libtorch;H:\projets\efficientnet-libtorch\include;D:\libtorch\libtorch-1.8.1-release\include\torch\csrc\api\include;D:\libtorch\libtorch-1.8.1-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>c:\Program Files (x86)\torchvision\include;D:\opencv\install\include;H:\projets\crim-libtorch-extensions;H:\projets\crim-libtorch-extensions\include;D:\libtorch\libtorch-1.8.1-release\include\torch\csrc\api\include;D:\libtorch\libtorch-1.8.1-release\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <CompileAs>CompileAsCpp</CompileAs>
       <ExceptionHandling>Sync</ExceptionHandling>
@@ -125,10 +125,10 @@
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;WITH_CUDA;CMAKE_INTDIR=\"Release\";EfficientNet_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>H:\projets\efficientnet-libtorch;H:\projets\efficientnet-libtorch\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>H:\projets\crim-libtorch-extensions;H:\projets\crim-libtorch-extensions\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Midl>
-      <AdditionalIncludeDirectories>H:\projets\efficientnet-libtorch;H:\projets\efficientnet-libtorch\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>H:\projets\crim-libtorch-extensions;H:\projets\crim-libtorch-extensions\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>
       <HeaderFileName>%(Filename).h</HeaderFileName>
       <TypeLibraryName>%(Filename).tlb</TypeLibraryName>
@@ -147,8 +147,8 @@
       <AdditionalOptions>%(AdditionalOptions) /machine:x64</AdditionalOptions>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
-      <ImportLibrary>H:/projets/efficientnet-libtorch/build/Release/EfficientNet.lib</ImportLibrary>
-      <ProgramDataBaseFile>H:/projets/efficientnet-libtorch/build/Release/EfficientNet.pdb</ProgramDataBaseFile>
+      <ImportLibrary>H:/projets/crim-libtorch-extensions/build/Release/EfficientNet.lib</ImportLibrary>
+      <ProgramDataBaseFile>H:/projets/crim-libtorch-extensions/build/Release/EfficientNet.pdb</ProgramDataBaseFile>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
     </Link>
@@ -160,13 +160,13 @@
     <ClInclude Include="..\include\dirent.h" />
     <ClInclude Include="..\include\models\NFNet.h" />
     <ClInclude Include="..\include\models\SGD_AGC.h" />
-    <ClInclude Include="H:\projets\efficientnet-libtorch\include\models\BaseModel.h" />
-    <ClInclude Include="H:\projets\efficientnet-libtorch\include\models\EfficientNet.h" />
-    <ClInclude Include="H:\projets\efficientnet-libtorch\include\stdafx.h" />
+    <ClInclude Include="H:\projets\crim-libtorch-extensions\include\models\BaseModel.h" />
+    <ClInclude Include="H:\projets\crim-libtorch-extensions\include\models\EfficientNet.h" />
+    <ClInclude Include="H:\projets\crim-libtorch-extensions\include\stdafx.h" />
     <ClCompile Include="..\source\models\NFNet.cpp" />
     <ClCompile Include="..\source\models\SGD_AGC.cpp" />
-    <ClCompile Include="H:\projets\efficientnet-libtorch\source\models\EfficientNet.cpp" />
-    <ClCompile Include="H:\projets\efficientnet-libtorch\source\training.cpp" />
+    <ClCompile Include="H:\projets\crim-libtorch-extensions\source\models\EfficientNet.cpp" />
+    <ClCompile Include="H:\projets\crim-libtorch-extensions\source\training.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

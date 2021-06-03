@@ -1,6 +1,6 @@
 MAKEFILE_NAME := $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 APP_ROOT      := $(abspath $(lastword $(MAKEFILE_NAME))/..)
-APP_NAME	  := EfficientNet LibTorch (C++/Python)
+APP_NAME	  := CRIM LibTorch Extensions (C++/Python)
 
 .DEFAULT_GOAL := help
 all: help
@@ -33,6 +33,8 @@ help:	## print this help message (default)
 						 printf "   $(_TARGET)%-$(_SPACING)s$(_NORMAL) %s (preinstall dependencies)\n", $$1, $$2;} \
 		'
 
+## --- Cleanup targets --- ##
+
 .PHONY: clean
 clean: clean-build clean-install  ## clean everything
 
@@ -52,6 +54,8 @@ clean-install:	## clean output install locations
 	@-rm -fr build/install*
 	@-rm -fr install
 
+## --- Project targets --- ##
+
 .PHONY: build
 build:	## build C++ library from source
 	@mkdir build
@@ -61,3 +65,25 @@ build:	## build C++ library from source
 .PHONY: install
 install:  ## install library extension with Python/C++ bindings
 	python setup.py install
+
+## --- Versioning targets --- ##
+
+# Bumpversion 'dry' config
+# if 'dry' is specified as target, any bumpversion call using 'BUMP_XARGS' will not apply changes
+BUMP_XARGS ?= --verbose --allow-dirty
+ifeq ($(filter dry, $(MAKECMDGOALS)), dry)
+	BUMP_XARGS := $(BUMP_XARGS) --dry-run
+endif
+
+.PHONY: dry
+dry: setup.cfg	## run 'bump' target without applying changes (dry-run)
+ifeq ($(findstring bump, $(MAKECMDGOALS)),)
+	$(error Target 'dry' must be combined with a 'bump' target)
+endif
+
+.PHONY: bump
+bump:	## bump version using VERSION specified as user input (make VERSION=<X.Y.Z> bump)
+	@-echo "Updating package version ..."
+	@[ "${VERSION}" ] || ( echo ">> 'VERSION' is not set"; exit 1 )
+	@-bash -c '$(CONDA_CMD) test -f "$(CONDA_ENV_PATH)/bin/bump2version" || pip install $(PIP_XARGS) bump2version'
+	@-bash -c '$(CONDA_CMD) bump2version $(BUMP_XARGS) --new-version "${VERSION}" patch;'
