@@ -4,6 +4,12 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
+* Nothing new for the moment.
+
+[0.1.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.1.0) (2021-06-03)
+------------------------------------------------------------------------------------------------------------------------
+____________
+
 * Data
   * Data Augmentation utilities for reading and preprocessing images to form a training, validation and test datasets.
 
