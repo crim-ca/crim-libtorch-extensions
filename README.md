@@ -1,4 +1,4 @@
-# CRIM Torch Extensions
+# CRIM LibTorch Extensions
 
 Provides multiple algorithm implementation with Python/C++ bindings
 as extensions to `libtorch` ([PyTorch][pytorch] C++ API).
@@ -49,7 +49,7 @@ The source code provides 2 different installation modes:
 
 In both cases, there are common settings to define. They are mutually exclusive installation
 methods since Python module generation and install location is usually completely different
-(in targetted Python site-packages) compared to standalone library and CLI application.
+(in targeted Python site-packages) compared to standalone library and CLI application.
 
 Both require that you first build the dependencies prior to installing any variant.
 
@@ -74,7 +74,7 @@ Consider using a visualization utility (eg: ``ccmake`` (TUI) or `cmake-gui` (GUI
 | `WITH_CUDA`                | `ON`    | Enable CUDA support. (see below notes)
 | `WITH_DATA_AUGMENTATION`   | `ON`    | Enable the *Data Augmentation* functions. Required by `TestBench`.
 | `WITH_EXTERNAL_MODULE`     | `OFF`   | *unused for now*
-| `WITH_PRECOMPILED_HEADER`  | `OFF`   | Use `stdafx.h` with `Torch` precompiled headers and relevant defininitions.
+| `WITH_PRECOMPILED_HEADER`  | `OFF`   | Use `stdafx.h` with `Torch` precompiled headers and relevant definitions.
 | `WITH_PYTHON`              | `OFF`   | Build the Python module bindings. Cannot be combined with `tests` or `TestBench`.
 | `WITH_TESTS`               | `OFF`   | Build minimal tests of various implementations defined by provided extensions.
 | `WITH_TEST_BENCH`          | `ON`    | Build a CLI `TestBench` utility to run training/testing with the implementations.
@@ -87,7 +87,7 @@ Consider using a visualization utility (eg: ``ccmake`` (TUI) or `cmake-gui` (GUI
    Therefore, for full performances on the final result, all dependencies should be compiled with CUDA libraries.
 3. CUDA-enabled devices must also be available, otherwise stubs will be generated and you won't benefit from
    actual performance improvements.
-4. Some depenencies employ `USE_CUDA` instead of `WITH_CUDA`. We try to detect both, but in case of problem, define
+4. Some dependencies employ `USE_CUDA` instead of `WITH_CUDA`. We try to detect both, but in case of problem, define
    both with the same value to ensure proper detection.
 
 When ready, move on to the next sub-section according to the variant you want to compile.
@@ -136,7 +136,7 @@ make install
 | Variable            | Description
 | ------------------- | ---------------------------------------------------------
 | `PYBIND11_DIR`      | Installation path of PyBind11 library <br> (hint: can reuse PyTorch's `third_party` submodule)
-| `PYTHON_EXECUTABLE` | Path to the Python binary to find dependencies, headers and other references. <br> (RECOMMENDED: use virtual environment, e.g.: `conda`)
+| `PYTHON_EXECUTABLE` | Path to Python binary to find dependencies. <br> (RECOMMENDED: use virtual environment, e.g.: `conda`)
 
 **Hint** <br>
 > Sources of [PyTorch][pytorch] and [TorchVision][torchvision] provide a `setup.py` script that helps build and install
@@ -172,7 +172,7 @@ If everything succeeded, you should be able to move on to using the package.
 
 Once the package was built and installed, it can be called directly in Python.
 
-You can test that references are found correctly using for exemple the following code:
+You can test that references are found correctly using for example the following code:
 
 ```shell
 ❯ python
@@ -274,5 +274,5 @@ libraries, they will most probably not match.
 If the above situation occurs, uninstall any `pip` or `conda` installation. Then, build and install
 [PyTorch from Sources](https://github.com/pytorch/pytorch#from-source) following their directives.
 This should be not much more than preparing your environment variables to find references and define custom options,
-and then call `python setup.py install`. Finally, rebuild and install the extensions with the source libraires using
+and then call `python setup.py install`. Finally, rebuild and install the extensions with the source libraries using
 the same command inside this repository.
