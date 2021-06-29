@@ -5,7 +5,8 @@ as extensions to `libtorch` ([PyTorch][pytorch] C++ API).
 
 <img alt="version-0.2.0" src="https://img.shields.io/badge/version-0.2.0-blue"/> <br>
 ______
-<br>
+
+## Contents
 
 - [Included Extensions](#included-extensions)
 - [Build and Install](#build-and-install)
