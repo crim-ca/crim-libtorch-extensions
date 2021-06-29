@@ -30,8 +30,8 @@ ScaledStdConv2d myconv1x1(int64_t in, int64_t out, int64_t stride) {
     return ScaledStdConv2d(O);
 }
 
-int BasicBlock::expansion = 1;
-int Bottleneck::expansion = 4;
+int VISION_API BasicBlock::expansion = 1;
+int VISION_API Bottleneck::expansion = 4;
 
 BasicBlock::BasicBlock(
     int64_t inplanes,
