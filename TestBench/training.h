@@ -71,7 +71,7 @@ std::vector<torch::Tensor> process_images(std::vector<std::string> list_images, 
 /**
  * @brief Process vector of tensors (labels) read from the list of labels
  *
- * @param list_labels       list of labaels to load
+ * @param list_labels       list of labels to load
  * @return                  list of labels converted to tensors
  */
 std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels);
@@ -138,7 +138,7 @@ public:
  * @param optimizer             Optimizer to use (e.g.: Adam, SGD, etc.)
  * @param size_train            Size of training dataset
  * @param size_valid            Size of validation dataset
- * @param outlgo                Stream handler to output log details
+ * @param outlog                Stream handler to output log details
  * @param max_epochs            Maximum number of training epochs
  */
 template<typename Dataloader>
