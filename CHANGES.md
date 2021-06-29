@@ -4,7 +4,9 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Remove duplicate files following merge resolution with other pending branches.
+* Fix GNU `dirent.h` incorrectly including Windows-specific header by moving it into dedicated `windows` directory.
+* Add utility targets to local `Makefile` to dispatch build, install, and basic test calls.
 
 [0.1.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.1.0) (2021-06-03)
 ------------------------------------------------------------------------------------------------------------------------

@@ -2,6 +2,13 @@ MAKEFILE_NAME := $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 APP_ROOT      := $(abspath $(lastword $(MAKEFILE_NAME))/..)
 APP_NAME	  := CRIM LibTorch Extensions (C++/Python)
 
+BUILD_DIR ?= $(APP_ROOT)/build
+ifeq ($(BUILD_DIR),)
+  BUILD_DIR := $(APP_ROOT)/build
+endif
+# remove trailing slash and spaces
+BUILD_DIR := $(shell realpath $(dir $(BUILD_DIR)/))
+
 .DEFAULT_GOAL := help
 all: help
 
@@ -33,6 +40,12 @@ help:	## print this help message (default)
 						 printf "   $(_TARGET)%-$(_SPACING)s$(_NORMAL) %s (preinstall dependencies)\n", $$1, $$2;} \
 		'
 
+.PHONY: info
+info:
+	@echo "APP_NAME:  $(APP_NAME)"
+	@echo "APP_ROOT:  $(APP_ROOT)"
+	@echo "BUILD_DIR: $(BUILD_DIR)"
+
 ## --- Cleanup targets --- ##
 
 .PHONY: clean
@@ -40,31 +53,50 @@ clean: clean-build clean-install  ## clean everything
 
 .PHONY: clean-build
 clean-build:	## clean build caches
-	@-rm -fr build/
+	@-rm -fr "$(BUILD_DIR)/"
+	@-rm -fr "$(APP_ROOT)/CMakeFiles/"
+	@-rm -fr "$(APP_ROOT)/CMakeCache.txt"
 
 .PHONY: clean-install
 clean-install:	## clean output install locations
 	@-rm -fr *.egg
 	@-rm -fr *.egg-info
-	@-rm -fr bdist
-	@-rm -fr dist
-	@-rm -fr build/bdist*
-	@-rm -fr build/dist*
-	@-rm -fr build/lib*
-	@-rm -fr build/install*
-	@-rm -fr install
+	@-rm -fr "$(APP_ROOT)/bin"
+	@-rm -fr "$(APP_ROOT)/bdist"
+	@-rm -fr "$(APP_ROOT)/dist"
+	@-rm -fr "$(APP_ROOT)/install"
+	@-rm -fr "$(BUILD_DIR)/bin*"
+	@-rm -fr "$(BUILD_DIR)/bdist*"
+	@-rm -fr "$(BUILD_DIR)/dist*"
+	@-rm -fr "$(BUILD_DIR)/lib*"
+	@-rm -fr "$(BUILD_DIR)/install*"
 
 ## --- Project targets --- ##
 
 .PHONY: build
-build:	## build C++ library from source
-	@mkdir build
-	@cd build
-	@cmake ..
+build:	## build C++ library extensions from source (refer to CMake variables to configure build)
+	@mkdir -p "$(BUILD_DIR)"
+	@cd "$(BUILD_DIR)" && cmake "$(APP_ROOT)"
+	@cd "$(BUILD_DIR)" && make
 
 .PHONY: install
-install:  ## install library extension with Python/C++ bindings
+install: install-cpp  ## alias to 'install-cpp'
+
+.PHONY: install-cpp
+install-cpp: build  ## install built C++ libraries
+	@cd "$(BUILD_DIR)" && make install
+
+.PHONY: install-python
+install-python:  ## install library extension with Python/C++ bindings into the current Python environment
 	python setup.py install
+
+.PHONY: test-bench-help
+test-bench-help:  ## call the help of the TestBench application (attempts building it if it doesn't exist)
+	@test -f "$(BUILD_DIR)/TestBench/TestBench" || ( \
+		echo "TestBench was not found. Attempting to build and install it." && \
+		$(MAKE) build \
+	)
+	@bash -c '$(BUILD_DIR)/TestBench/TestBench --help'
 
 ## --- Versioning targets --- ##
 
@@ -72,7 +104,7 @@ install:  ## install library extension with Python/C++ bindings
 # if 'dry' is specified as target, any bumpversion call using 'BUMP_XARGS' will not apply changes
 BUMP_XARGS ?= --verbose --allow-dirty
 ifeq ($(filter dry, $(MAKECMDGOALS)), dry)
-	BUMP_XARGS := $(BUMP_XARGS) --dry-run
+  BUMP_XARGS := $(BUMP_XARGS) --dry-run
 endif
 
 .PHONY: dry
