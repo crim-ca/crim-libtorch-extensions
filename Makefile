@@ -76,7 +76,13 @@ clean-install:	## clean output install locations
 .PHONY: build
 build:	## build C++ library extensions from source (refer to CMake variables to configure build)
 	@mkdir -p "$(BUILD_DIR)"
-	@cd "$(BUILD_DIR)" && cmake "$(APP_ROOT)"
+	@cd "$(BUILD_DIR)" && \
+		cmake \
+			-DTORCH_DIR=${TORCH_DIR} \
+			-DTORCHVISION_DIR=${TORCHVISION_DIR} \
+			-DOPENCV_DIR=${OPENCV_DIR} \
+			-DCLI11_DIR=${CLI11_DIR} \
+		"$(APP_ROOT)"
 	@cd "$(BUILD_DIR)" && make
 
 .PHONY: install
@@ -94,7 +100,7 @@ install-python:  ## install library extension with Python/C++ bindings into the 
 test-bench-help:  ## call the help of the TestBench application (attempts building it if it doesn't exist)
 	@test -f "$(BUILD_DIR)/TestBench/TestBench" || ( \
 		echo "TestBench was not found. Attempting to build and install it." && \
-		$(MAKE) build \
+		$(MAKE) -j $(shell nproc) build \
 	)
 	@bash -c '$(BUILD_DIR)/TestBench/TestBench --help'
 
