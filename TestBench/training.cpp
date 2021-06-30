@@ -2,8 +2,11 @@
 #pragma hdrstop
 
 #include <algorithm>
-#include <vector>
+#include <exception>
 #include <fstream>
+#include <set>
+#include <vector>
+
 #include <torch/torch.h>
 #include "torchvision/models/resnet.h"
 #include "opencv2/opencv.hpp"
@@ -59,36 +62,48 @@ std::vector<torch::Tensor> process_images(std::vector<std::string> list_images, 
     return states;
 }
 
-/// Function returns vector of tensors (labels) read from the list of labels
+/// Process vector of tensors (labels) read from the list of labels
 std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels) {
     std::vector<torch::Tensor> labels;
-    for(std::vector<int>::iterator it = list_labels.begin(); it != list_labels.end(); ++it) {
+    for(auto it = list_labels.begin(); it != list_labels.end(); ++it) {
         torch::Tensor label = read_label(*it);
         labels.push_back(label);
     }
     return labels;
 }
 
-/// Function to load data from given folder(s) name(s) (folders_name)
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(std::vector<std::string> folders_name) {
+/// Load data and labels corresponding to images from given folder(s)
+std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
+    std::vector<std::string> folders_path,
+    std::string extension,
+    Label label
+) {
     std::vector<std::string> list_images;
     std::vector<int> list_labels;
-    int label = 0;
-    for(auto const& value: folders_name) {
-        std::string base_name = value + "\\";
+    for (auto path: folders_path) {
+        std::replace(path.begin(), path.end(), '\\', '/');
+
+        std::string base_name = path + "/";
         // cout << "Reading from: " << base_name << endl;
         DIR* dir;
         struct dirent *ent;
-        if((dir = opendir(base_name.c_str())) != NULL) {
+        if ((dir = opendir(base_name.c_str())) != NULL) {
             while((ent = readdir(dir)) != NULL) {
                 std::string filename = ent->d_name;
-//                std::cout << filename << std::endl;
-                if(filename.length() > 4 && filename.substr(filename.length() - 4) == "JPEG") {
-                    // cout << base_name + ent->d_name << endl;
-                    // cv::Mat temp = cv::imread(base_name + "/" + ent->d_name, 1);
-//                    std::cout << "push ----"<< base_name + ent->d_name << "----"<<std::endl;
-                    list_images.push_back(base_name + ent->d_name);
-                    list_labels.push_back(label);
+                // std::cout << filename << std::endl;
+                if (filename.length() && filename.find(".") != std::string::npos) {
+
+                    // extract extension and compare lowercase to keep matches
+                    std::istringstream iss(filename);
+                    std::string s, ext;
+                    while (std::getline(iss, s, '.'))
+                        ext = s;
+                    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c){ return std::tolower(c); });
+
+                    if (ext == extension) {
+                        list_images.push_back(base_name + ent->d_name);
+                        list_labels.push_back(label);
+                    }
                 }
             }
             closedir(dir);
@@ -96,9 +111,51 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(st
             std::cout << "Could not open directory" << std::endl;
             // return EXIT_FAILURE;
         }
-        label += 1;
     }
     return std::make_pair(list_images, list_labels);
+}
+
+/// Load data and labels corresponding to images from multiple sub-folders.
+std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
+    std::string folder_path,
+    std::string extension
+) {
+    DIR* dir;
+    struct dirent *ent;
+    std::vector<std::string> subdirs;
+    if ((dir = opendir(folder_path.c_str())) != NULL) {
+        std::vector<std::string> folders;
+        while((ent = readdir(dir)) != NULL) {
+            if (ent->d_type != DT_DIR)
+                continue;
+            std::string dirname = ent->d_name;
+            std::string dirpath = folder_path + "/" + dirname;
+            subdirs.push_back(dirpath);
+        }
+    } else {
+        auto msg = "Invalid directory does not exist [" + folder_path + "]";
+        throw std::runtime_error(msg);
+    }
+
+    Label label = 0;
+    std::vector<std::string> subimages;
+    std::vector<Label> sublabels;
+    std::sort(subdirs.begin(), subdirs.end());
+    for (auto subdir : subdirs) {
+        auto data = load_data_from_folder({ subdir }, extension, label);
+        subimages.insert(subimages.end(), data.first.begin(), data.first.end());
+        sublabels.insert(sublabels.end(), data.second.begin(), data.second.end());
+        label++;
+    }
+    return std::make_pair(subimages, sublabels);
+}
+
+/// Counts the number of unique classes using a set of labeled data
+size_t count_classes(const std::vector<Label> labels) {
+    std::set<Label> unique;
+    for (auto label : labels)
+        unique.insert(label);
+    return unique.size();
 }
 
 /// Splits data samples into training and validation sets according to specified ratio

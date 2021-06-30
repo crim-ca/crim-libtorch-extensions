@@ -96,32 +96,34 @@ std::map<std::string, OptimType> OptimMap {
  * @brief TestBench CLI to evaluate different combination of model architectures and optimizers against loaded data.
  */
 int main(int argc, const char* argv[]) {
-    /* sample dataset locations
-
-    M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\train\\n01440764
-    M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\train\\n01443537
-    M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\train\\n01484850
-    M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\val\\n01440764
-    M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\val\\n01443537
-    M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\val\\n01484850
-    */
 
     CLI::App app("TestBench for training, evaluating and testing CRIM libtorch extensions (EfficientNet, NFNet, etc.)");
     ArchType archtype { ArchType::ResNet34 };
     app.add_option("-a,--arch", archtype, "Architecture")
         ->required()
         ->transform(CLI::CheckedTransformer(ArchMap, CLI::ignore_case));
-    OptimType optimtype = { OptimType::SGD };
+    OptimType optimtype { OptimType::SGD };
     app.add_option("-o,--optim", optimtype, "Optimizer")
         ->required()
         ->transform(CLI::CheckedTransformer(OptimMap, CLI::ignore_case));
 
+    std::string dataset_folder_train, dataset_folder_valid;
+    std::string data_file_extension = "jpeg";
     std::string logfilename;
     double lr{ 0.001 };
     double clipping{ 0.01 };
     bool verbose{ false };
     bool version{ false };
 
+    CLI::Option* data_train_opt = app.add_option("--train", dataset_folder_train,
+        "Directory where training images categorized by class sub-folders can be loaded from."
+    );
+    CLI::Option* data_valid_opt = app.add_option("--valid", dataset_folder_valid,
+        "Directory where validation images categorized by class sub-folders can be loaded from."
+    );
+    CLI::Option* data_file_ext_opt = app.add_option("-e,--extension", data_file_extension,
+        "Extension of image files to be considered for loading data."
+    );
     CLI::Option* log_opt = app.add_option("-l,--logfile", logfilename, "Output log filename");
     CLI::Option* lr_opt = app.add_option("--lr", lr, "Learning rate");
     CLI::Option* verbose_opt = app.add_flag("-v,--verbose", verbose, "Verbosity");
@@ -144,7 +146,7 @@ int main(int argc, const char* argv[]) {
 
     if (version) {
         outlog << std::string(CRIM_TORCH_EXTENSIONS_VERSION) << std::endl;
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     bool has_cuda = torch::cuda::is_available();
@@ -156,7 +158,26 @@ int main(int argc, const char* argv[]) {
         outlog << (has_cuda ? "CUDA detected!" : "CUDA missing! Will use CPU.") << std::endl;
     }
 
-    size_t nb_class = 3;
+    if (dataset_folder_train.empty() || dataset_folder_valid.empty()) {
+        outlog << "Invalid directories for train/valid datasets provided no data!" << std::endl;
+        return EXIT_FAILURE;
+    }
+    // Get paths of images and labels from the folder paths
+    std::pair<std::vector<std::string>, std::vector<Label>> samples_train = load_data_from_folder(
+        dataset_folder_train, data_file_extension
+    );
+    std::pair<std::vector<std::string>, std::vector<Label>> samples_valid = load_data_from_folder(
+        dataset_folder_valid, data_file_extension
+    );
+
+    size_t nb_class_train = count_classes(samples_train.second);
+    size_t nb_class_valid = count_classes(samples_valid.second);
+    size_t nb_class = std::max(nb_class_train, nb_class_valid);
+    outlog << "Number of found classes: " << nb_class << std::endl;
+    outlog << "Number of train classes: " << nb_class_train << std::endl;
+    outlog << "Number of valid classes: " << nb_class_valid << std::endl;
+    outlog << "Number of train samples: " << samples_train.first.size() << std::endl;
+    outlog << "Number of valid samples: " << samples_valid.first.size() << std::endl;
 
     #ifdef USE_BASE_MODEL
     #ifdef USE_JIT_MODULE
@@ -258,37 +279,18 @@ int main(int argc, const char* argv[]) {
             break;
     }
 
-//    torch::optim::Adam opt(net.get()->parameters(), torch::optim::AdamOptions(1e-3 /*learning rate*/));
- //   torch::optim::SGD opt(net.get()->parameters(), torch::optim::SGDOptions(1e-3));
-
-    //torch::optim::SGDAGC opt(net.get()->parameters(), torch::optim::SGDAGCOptions(1e-3));
-
-    std::string dataset_folder_cls1 = "M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\train\\n01440764";
-    std::string dataset_folder_cls2 = "M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\train\\n01443537";
-    std::string dataset_folder_cls3 = "M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\train\\n01484850";
-    std::string dataset_folder_cls1_val = "M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\val\\n01440764";
-    std::string dataset_folder_cls2_val = "M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\val\\n01443537";
-    std::string dataset_folder_cls3_val = "M:\\data22-brs\\AARISH\\01\\nobackup\\imagenet\\training_256x256_rgb\\val\\n01484850";
-
-
-    // Get paths of images and labels as int from the folder paths
-    std::pair<std::vector<std::string>, std::vector<Label>> pair_images_labels = load_data_from_folder(
-        { dataset_folder_cls1,dataset_folder_cls2, dataset_folder_cls3 }
-    );
-    std::pair<std::vector<std::string>, std::vector<Label>> pair_images_labels_val = load_data_from_folder(
-        { dataset_folder_cls1_val,dataset_folder_cls2_val, dataset_folder_cls3_val }
-    );
-
     //    std::pair<std::vector<std::string>, std::vector<Label>> pairs_training, pairs_validation;
     //    splitData(pair_images_labels, 0.8, pairs_training, pairs_validation);
 
 
     // Initialize DataAugmentationDataset class and read data
     auto dataAugRNG = cv::RNG();
-    auto custom_dataset_train = DataAugmentationDataset(pair_images_labels.first, pair_images_labels.second, image_size, dataAugRNG)
-        .map(torch::data::transforms::Stack<>());
-    auto custom_dataset_valid = DataAugmentationDataset(pair_images_labels_val.first, pair_images_labels_val.second, image_size, dataAugRNG)
-        .map(torch::data::transforms::Stack<>());
+    auto custom_dataset_train = DataAugmentationDataset(
+        samples_train.first, samples_train.second, image_size, dataAugRNG
+    ).map(torch::data::transforms::Stack<>());
+    auto custom_dataset_valid = DataAugmentationDataset(
+        samples_valid.first, samples_valid.second, image_size, dataAugRNG
+    ).map(torch::data::transforms::Stack<>());
 
     using RandomDataLoader = torch::data::samplers::RandomSampler;
     size_t batch_size = 4;
@@ -306,5 +308,5 @@ int main(int argc, const char* argv[]) {
     if (fileopen)
         outfile.close();
 
-    return 0;
+    return EXIT_SUCCESS;
 }

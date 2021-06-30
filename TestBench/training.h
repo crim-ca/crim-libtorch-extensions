@@ -77,12 +77,40 @@ std::vector<torch::Tensor> process_images(std::vector<std::string> list_images, 
 std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels);
 
 /**
- * @brief Load data from given folder(s) name(s) (folders_name)
+ * @brief Load data and labels corresponding to images from given folder(s).
  *
- * @param folders_name      name of folders as a vector to load data from
+ * @param folders_path      Folders paths as a vector to load nested data from
+ * @param extension         Extension of files that corresponds to images to be considered for loading from folders.
+ * @param label             Label to be applied to all images retrieved from all the folders.
  * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
  */
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(std::vector<std::string> folders_name);
+std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
+    std::vector<std::string> folders_path,
+    std::string extension,
+    Label label
+);
+
+/**
+ * @brief Load data and labels corresponding to images from multiple sub-folders.
+ *
+ * Labels are generated iteratively, from 0 to N sub-folders sorted alphanumerically.
+ *
+ * @param folder_path       Parent folder under which to load sub-folders corresponding to different image classes.
+ * @param extension         Extension of files that corresponds to images to be considered for loading from folders.
+ * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
+ */
+std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
+    std::string folder_path,
+    std::string extension
+);
+
+/**
+ * @brief Counts the number of unique classes using a set of labeled data.
+ *
+ * @param labels            List of labels associated to loaded data.
+ * @return                  Number of distinct classes.
+ */
+size_t count_classes(const std::vector<Label> labels);
 
 /**
  * @brief Dataset that loads and pre-processes the images and corresponding labels with data augmentation.
