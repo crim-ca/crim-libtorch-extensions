@@ -6,8 +6,16 @@ BUILD_DIR ?= $(APP_ROOT)/build
 ifeq ($(BUILD_DIR),)
   BUILD_DIR := $(APP_ROOT)/build
 endif
+INSTALL_DIR ?= $(APP_ROOT)/install
+ifeq ($(INSTALL_DIR),)
+  INSTALL_DIR := $(APP_ROOT)/install
+endif
+
 # remove trailing slash and spaces
 BUILD_DIR := $(shell realpath $(dir $(BUILD_DIR)/))
+INSTALL_DIR := $(shell realpath $(dir $(INSTALL_DIR)/))
+
+## --- Information targets --- ##
 
 .DEFAULT_GOAL := help
 all: help
@@ -41,10 +49,11 @@ help:	## print this help message (default)
 		'
 
 .PHONY: info
-info:
-	@echo "APP_NAME:  $(APP_NAME)"
-	@echo "APP_ROOT:  $(APP_ROOT)"
-	@echo "BUILD_DIR: $(BUILD_DIR)"
+info:  ## Display useful information about configurations employed by make
+	@echo "APP_NAME:       $(APP_NAME)"
+	@echo "APP_ROOT:       $(APP_ROOT)"
+	@echo "BUILD_DIR:      $(BUILD_DIR)"
+	@echo "INSTALL_DIR:    $(INSTALL_DIR)"
 
 ## --- Cleanup targets --- ##
 
@@ -78,6 +87,7 @@ build:	## build C++ library extensions from source (refer to CMake variables to 
 	@mkdir -p "$(BUILD_DIR)"
 	@cd "$(BUILD_DIR)" && \
 		cmake \
+			-DCMAKE_INSTALL_PREFIX=$(INSTALL_DIR) \
 			-DTORCH_DIR=${TORCH_DIR} \
 			-DTORCHVISION_DIR=${TORCHVISION_DIR} \
 			-DOPENCV_DIR=${OPENCV_DIR} \
