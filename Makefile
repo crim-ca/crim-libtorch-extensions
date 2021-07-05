@@ -1,6 +1,8 @@
 MAKEFILE_NAME := $(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
 APP_ROOT      := $(abspath $(lastword $(MAKEFILE_NAME))/..)
 APP_NAME	  := CRIM LibTorch Extensions (C++/Python)
+CMAKE 		  ?= $(shell which cmake3 || which cmake)
+
 
 BUILD_DIR ?= $(APP_ROOT)/build
 ifeq ($(BUILD_DIR),)
@@ -52,6 +54,7 @@ help:	## print this help message (default)
 info:  ## Display useful information about configurations employed by make
 	@echo "APP_NAME:       $(APP_NAME)"
 	@echo "APP_ROOT:       $(APP_ROOT)"
+	@echo "CMAKE:          $(CMAKE)"
 	@echo "BUILD_DIR:      $(BUILD_DIR)"
 	@echo "INSTALL_DIR:    $(INSTALL_DIR)"
 
@@ -86,7 +89,7 @@ clean-install:	## clean output install locations
 build:	## build C++ library extensions from source (refer to CMake variables to configure build)
 	@mkdir -p "$(BUILD_DIR)"
 	@cd "$(BUILD_DIR)" && \
-		cmake \
+		$(CMAKE) \
 			-DCMAKE_INSTALL_PREFIX=$(INSTALL_DIR) \
 			-DTORCH_DIR=${TORCH_DIR} \
 			-DTORCHVISION_DIR=${TORCHVISION_DIR} \
