@@ -142,7 +142,7 @@ int main(int argc, const char* argv[]) {
         if (outfile.is_open())
             fileopen = true;
     }
-   std::ostream& outlog = (fileopen ? outfile : std::cout);
+    std::ostream& outlog = (fileopen ? outfile : std::cout);
 
     if (version) {
         outlog << std::string(CRIM_TORCH_EXTENSIONS_VERSION) << std::endl;
@@ -162,6 +162,10 @@ int main(int argc, const char* argv[]) {
         outlog << "Invalid directories for train/valid datasets provided no data!" << std::endl;
         return EXIT_FAILURE;
     }
+
+    if (verbose)
+        outlog << "Loading samples..." << std::endl;
+
     // Get paths of images and labels from the folder paths
     std::pair<std::vector<std::string>, std::vector<Label>> samples_train = load_data_from_folder(
         dataset_folder_train, data_file_extension
@@ -173,11 +177,13 @@ int main(int argc, const char* argv[]) {
     size_t nb_class_train = count_classes(samples_train.second);
     size_t nb_class_valid = count_classes(samples_valid.second);
     size_t nb_class = std::max(nb_class_train, nb_class_valid);
-    outlog << "Number of found classes: " << nb_class << std::endl;
-    outlog << "Number of train classes: " << nb_class_train << std::endl;
-    outlog << "Number of valid classes: " << nb_class_valid << std::endl;
-    outlog << "Number of train samples: " << samples_train.first.size() << std::endl;
-    outlog << "Number of valid samples: " << samples_valid.first.size() << std::endl;
+    if (verbose) {
+        outlog << "Number of found classes: " << nb_class << std::endl;
+        outlog << "Number of train classes: " << nb_class_train << std::endl;
+        outlog << "Number of valid classes: " << nb_class_valid << std::endl;
+        outlog << "Number of train samples: " << samples_train.first.size() << std::endl;
+        outlog << "Number of valid samples: " << samples_valid.first.size() << std::endl;
+    }
 
     #ifdef USE_BASE_MODEL
     #ifdef USE_JIT_MODULE

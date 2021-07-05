@@ -145,7 +145,7 @@ if(${WITH_PYTHON})
     endif()
 
     # find Python and pybind required to generate bindings
-    find_package(Python3 COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE})
+    find_package(Python3 COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE} ${Python3_ROOT_DIR})
     list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})
     list(APPEND EXTERNAL_LIBS ${Python_LIBRARIES})
 

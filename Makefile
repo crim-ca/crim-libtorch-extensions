@@ -3,7 +3,7 @@ APP_ROOT      := $(abspath $(lastword $(MAKEFILE_NAME))/..)
 APP_NAME	  := CRIM LibTorch Extensions (C++/Python)
 CMAKE 		  ?= $(shell which cmake3 || which cmake)
 
-
+# build/install paths
 BUILD_DIR ?= $(APP_ROOT)/build
 ifeq ($(BUILD_DIR),)
   BUILD_DIR := $(APP_ROOT)/build
@@ -12,10 +12,24 @@ INSTALL_DIR ?= $(APP_ROOT)/install
 ifeq ($(INSTALL_DIR),)
   INSTALL_DIR := $(APP_ROOT)/install
 endif
+PYTHON_EXECUTABLE ?= $(shell echo ${PYTHON_EXECUTABLE} || which python)
+ifeq ($(PYTHON_ROOT_DIR),)
+  PYTHON_ROOT_DIR := $(shell dirname $(PYTHON_EXECUTABLE))
+  PYTHON_ROOT_DIR := $(shell dirname $(PYTHON_ROOT_DIR))
+endif
 
 # remove trailing slash and spaces
 BUILD_DIR := $(shell realpath $(dir $(BUILD_DIR)/))
 INSTALL_DIR := $(shell realpath $(dir $(INSTALL_DIR)/))
+PYTHON_ROOT_DIR := $(shell realpath $(dir $(PYTHON_ROOT_DIR)/))
+
+
+# demo config
+DEMO_DATA_ROOT_DIR ?= /misc/data20/visi/imagenet
+DEMO_DATA_EXT ?= jpg
+DEMO_MODEL ?= EfficientNetB0
+DEMO_OPTIM ?= SGD
+
 
 ## --- Information targets --- ##
 
@@ -52,11 +66,19 @@ help:	## print this help message (default)
 
 .PHONY: info
 info:  ## Display useful information about configurations employed by make
-	@echo "APP_NAME:       $(APP_NAME)"
-	@echo "APP_ROOT:       $(APP_ROOT)"
-	@echo "CMAKE:          $(CMAKE)"
-	@echo "BUILD_DIR:      $(BUILD_DIR)"
-	@echo "INSTALL_DIR:    $(INSTALL_DIR)"
+	@echo "Build/Install:"
+	@echo "  APP_NAME:           $(APP_NAME)"
+	@echo "  APP_ROOT:           $(APP_ROOT)"
+	@echo "  CMAKE:              $(CMAKE)"
+	@echo "  BUILD_DIR:          $(BUILD_DIR)"
+	@echo "  INSTALL_DIR:        $(INSTALL_DIR)"
+	@echo "  PYTHON_EXECUTABLE:  $(PYTHON_EXECUTABLE)"
+	@echo "  PYTHON_ROOT_DIR:    $(PYTHON_ROOT_DIR)"
+	@echo "Demo:"
+	@echo "  DEMO_DATA_ROOT_DIR: $(DEMO_DATA_ROOT_DIR)"
+	@echo "  DEMO_DATA_EXT:      $(DEMO_DATA_EXT)"
+	@echo "  DEMO_MODEL:         $(DEMO_MODEL)"
+	@echo "  DEMO_OPTIM:         $(DEMO_OPTIM)"
 
 ## --- Cleanup targets --- ##
 
@@ -68,6 +90,10 @@ clean-build:	## clean build caches
 	@-rm -fr "$(BUILD_DIR)/"
 	@-rm -fr "$(APP_ROOT)/CMakeFiles/"
 	@-rm -fr "$(APP_ROOT)/CMakeCache.txt"
+
+.PHONY: clean-build-artefacts
+clean-build-artefacts:  ## remove CMake build artefacts, but leave configurations and directories intact
+	test -f "$(BUILD_DIR)/Makefile" && $(MAKE) -C "$(BUILD_DIR)" clean || echo "No Makefile callable in build directory"
 
 .PHONY: clean-install
 clean-install:	## clean output install locations
@@ -95,8 +121,11 @@ build:	## build C++ library extensions from source (refer to CMake variables to 
 			-DTORCHVISION_DIR=${TORCHVISION_DIR} \
 			-DOPENCV_DIR=${OPENCV_DIR} \
 			-DCLI11_DIR=${CLI11_DIR} \
+			-DWITH_PYTHON=OFF \
+			-DWITH_TESTS=ON \
+			-DWITH_TEST_BENCH=ON \
 		"$(APP_ROOT)"
-	@cd "$(BUILD_DIR)" && make
+	@cd "$(BUILD_DIR)" && make -j $(shell nproc)
 
 .PHONY: install
 install: install-cpp  ## alias to 'install-cpp'
@@ -116,6 +145,17 @@ test-bench-help:  ## call the help of the TestBench application (attempts buildi
 		$(MAKE) -j $(shell nproc) build \
 	)
 	@bash -c '$(BUILD_DIR)/TestBench/TestBench --help'
+
+# add conda
+.PHONY: test-bench-demo
+test-bench-demo: build  ## call the TestBench application with demo parameters (must have access to drives)
+	$(BUILD_DIR)/TestBench/TestBench \
+		--arch $(DEMO_MODEL) \
+		--optim $(DEMO_OPTIM) \
+		--train $(DEMO_DATA_ROOT_DIR)/train \
+		--valid $(DEMO_DATA_ROOT_DIR)/val \
+		--extension $(DEMO_DATA_EXT) \
+		-v | tee $(APP_ROOT)/TestBench.log
 
 ## --- Versioning targets --- ##
 
