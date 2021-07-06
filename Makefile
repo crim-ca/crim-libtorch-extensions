@@ -83,7 +83,7 @@ info:  ## Display useful information about configurations employed by make
 ## --- Cleanup targets --- ##
 
 .PHONY: clean
-clean: clean-build clean-install  ## clean everything
+clean: clean-build clean-install clean-test  ## clean everything
 
 .PHONY: clean-build
 clean-build:	## clean build caches
@@ -108,6 +108,10 @@ clean-install:	## clean output install locations
 	@-rm -fr "$(BUILD_DIR)/dist*"
 	@-rm -fr "$(BUILD_DIR)/lib*"
 	@-rm -fr "$(BUILD_DIR)/install*"
+
+.PHONY: clean-test
+clean-test:  ## remove test artefacts
+	@-rm -f "$(APP_ROOT)/TestBench.log"
 
 ## --- Project targets --- ##
 
