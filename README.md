@@ -25,6 +25,7 @@ ______
   - [Unrecognized Symbol Error](#unrecognized-symbol-error)
 
 [CLI11]: https://github.com/CLIUtils/CLI11
+[plog]: https://github.com/SergiusTheBest/plog
 [pytorch]: https://github.com/pytorch/pytorch
 [torchvision]: https://github.com/pytorch/vision
 
@@ -95,9 +96,13 @@ When ready, move on to the next sub-section according to the variant you want to
 
 ### Compile C++ Only
 
+Following requirements are needed if using `WITH_TEST_BENCH = ON` (CLI utility).
+Otherwise, build and install can be done directly without futher setup.
+
 | Variable           | Description
 | ------------------ | ---------------------------------------------------------
-| `CLI11_DIR`        | Installation path of [CLI11][CLI11] library (required only by `TestBench` CLI) <br>
+| `CLI11_DIR`        | Installation path of [CLI11][CLI11] library.
+| `PLOG_DIR`         | Installation path of [plog][plog] library.
 
 You can then call `CMake` as follows:
 

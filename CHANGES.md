@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Use [plog](https://github.com/SergiusTheBest/plog) for better flexibility over logging output and configuration.
 
 [0.2.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.2.0) (2021-06-29)
 ------------------------------------------------------------------------------------------------------------------------
