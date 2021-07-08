@@ -10,6 +10,8 @@
 #include "torchvision/models/resnet.h"
 #include "opencv2/opencv.hpp"
 #include "opencv2/imgcodecs.hpp"
+#include <plog/Log.h>
+#include "plog/Initializers/RollingFileInitializer.h"
 
 #include "data/DataAugmentation.h"
 #include "nn/models/EfficientNet.h"
@@ -98,20 +100,26 @@ std::map<std::string, OptimType> OptimMap {
 int main(int argc, const char* argv[]) {
 
     CLI::App app("TestBench for training, evaluating and testing CRIM libtorch extensions (EfficientNet, NFNet, etc.)");
+    #ifdef WIN32
+    app.allow_windows_style_options();
+    #endif
+
     ArchType archtype { ArchType::ResNet34 };
     app.add_option("-a,--arch", archtype, "Architecture")
-        ->required()
+        ->default_val(ArchType::ResNet34)
         ->transform(CLI::CheckedTransformer(ArchMap, CLI::ignore_case));
     OptimType optimtype { OptimType::SGD };
     app.add_option("-o,--optim", optimtype, "Optimizer")
-        ->required()
+        ->default_val(OptimType::SGD)
         ->transform(CLI::CheckedTransformer(OptimMap, CLI::ignore_case));
 
     std::string dataset_folder_train, dataset_folder_valid;
     std::string data_file_extension = "jpeg";
-    std::string logfilename;
+    std::string log_file_path;
     double lr{ 0.001 };
     double clipping{ 0.01 };
+    size_t batch_size = 16;
+    size_t max_epochs = 30;
     bool verbose{ false };
     bool version{ false };
 
@@ -123,48 +131,48 @@ int main(int argc, const char* argv[]) {
     );
     CLI::Option* data_file_ext_opt = app.add_option("-e,--extension", data_file_extension,
         "Extension of image files to be considered for loading data."
-    );
-    CLI::Option* log_opt = app.add_option("-l,--logfile", logfilename, "Output log filename");
-    CLI::Option* lr_opt = app.add_option("--lr", lr, "Learning rate");
-    CLI::Option* verbose_opt = app.add_flag("-v,--verbose", verbose, "Verbosity");
-    CLI::Option* clipping_opt = app.add_option("--clipping", clipping, "Clipping threshold");
-    CLI::Option* version_opt = app.add_option("--version", version, "Print the version number.");
+    )->default_val(data_file_extension);
+
+    CLI::Option* max_epochs_opt = app.add_option("-E,--max-epochs", max_epochs,
+        "Maximum number of training epochs."
+    )->default_val(max_epochs);
+    CLI::Option* batch_size_opt = app.add_option("-B,--batch-size", batch_size,
+        "Batch size of each iteration."
+    )->default_val(batch_size);
+    CLI::Option* lr_opt = app.add_option("--lr", lr, "Learning rate")->default_val(lr);
+    CLI::Option* clipping_opt = app.add_option("--clipping", clipping, "Clipping threshold")->default_val(clipping);
+
+    CLI::Option* log_opt = app.add_option("-l,--logfile", log_file_path, "Output log path.");
+    CLI::Option* verbose_opt = app.add_flag("-v,--verbose", verbose, "Verbosity")->default_val(verbose);
+    CLI::Option* version_opt = app.add_flag("--version", version, "Print the version number.");
 
     CLI11_PARSE(app, argc, argv);
     //https://stackoverflow.com/questions/428630/assigning-cout-to-a-variable-name
 
     auto start_time = std::chrono::steady_clock::now();
 
-    std::ofstream outfile;
-    bool fileopen = false;
-    if (!logfilename.empty()) {
-        outfile.open(logfilename, std::ios::out);
-        if (outfile.is_open())
-            fileopen = true;
-    }
-    std::ostream& outlog = (fileopen ? outfile : std::cout);
-
     if (version) {
-        outlog << std::string(CRIM_TORCH_EXTENSIONS_VERSION) << std::endl;
+        std::cout << std::string(CRIM_TORCH_EXTENSIONS_VERSION) << std::endl;
         return EXIT_SUCCESS;
     }
+
+    plog::init(verbose ? plog::debug : plog::info, log_file_path.c_str());
 
     bool has_cuda = torch::cuda::is_available();
     if (verbose) {
         if(lr_opt->count() > 0)
-            outlog << "Learning rate = " << lr << std::endl;
+            LOGGER(DEBUG) << "Learning rate = " << lr << std::endl;
         if(clipping_opt->count()>0)
-            outlog << "Lambda = " << clipping << std::endl;
-        outlog << (has_cuda ? "CUDA detected!" : "CUDA missing! Will use CPU.") << std::endl;
+            LOGGER(DEBUG) << "Lambda = " << clipping << std::endl;
+        LOGGER(DEBUG) << (has_cuda ? "CUDA detected!" : "CUDA missing! Will use CPU.") << std::endl;
     }
 
     if (dataset_folder_train.empty() || dataset_folder_valid.empty()) {
-        outlog << "Invalid directories for train/valid datasets provided no data!" << std::endl;
+        LOGGER(ERROR) << "Invalid directories for train/valid datasets provided no data!" << std::endl;
         return EXIT_FAILURE;
     }
 
-    if (verbose)
-        outlog << "Loading samples..." << std::endl;
+    LOGGER(DEBUG) << "Loading samples..." << std::endl;
 
     // Get paths of images and labels from the folder paths
     std::pair<std::vector<std::string>, std::vector<Label>> samples_train = load_data_from_folder(
@@ -177,12 +185,21 @@ int main(int argc, const char* argv[]) {
     size_t nb_class_train = count_classes(samples_train.second);
     size_t nb_class_valid = count_classes(samples_valid.second);
     size_t nb_class = std::max(nb_class_train, nb_class_valid);
-    if (verbose) {
-        outlog << "Number of found classes: " << nb_class << std::endl;
-        outlog << "Number of train classes: " << nb_class_train << std::endl;
-        outlog << "Number of valid classes: " << nb_class_valid << std::endl;
-        outlog << "Number of train samples: " << samples_train.first.size() << std::endl;
-        outlog << "Number of valid samples: " << samples_valid.first.size() << std::endl;
+
+    LOGGER(DEBUG) << "Number of found classes: " << nb_class << std::endl;
+    LOGGER(DEBUG) << "Number of train classes: " << nb_class_train << std::endl;
+    LOGGER(DEBUG) << "Number of valid classes: " << nb_class_valid << std::endl;
+    LOGGER(DEBUG) << "Number of train samples: " << samples_train.first.size() << std::endl;
+    LOGGER(DEBUG) << "Number of valid samples: " << samples_valid.first.size() << std::endl;
+    show_gpu_memory();
+
+    if (nb_class < 2) {
+        LOGGER(ERROR) << "Cannot train without at least 2 classes!" << std::endl;
+        return EXIT_FAILURE;
+    }
+    if (nb_class_train == 0 || nb_class_valid == 0) {
+        LOGGER(ERROR) << "Cannot run train/valid loops without samples!" << std::endl;
+        return EXIT_FAILURE;
     }
 
     #ifdef USE_BASE_MODEL
@@ -213,7 +230,7 @@ int main(int argc, const char* argv[]) {
                 #endif
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
-                if (verbose)  outlog << *net;
+                LOGGER(DEBUG) << *net << std::endl;
                 #ifdef USE_BASE_MODEL
                 pNet = std::dynamic_pointer_cast<IModel>(p);
                 #else
@@ -233,7 +250,7 @@ int main(int argc, const char* argv[]) {
                 #endif
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
-                if (verbose)  outlog << *net;
+                LOGGER(DEBUG) << *net << std::endl;
                 #ifdef USE_BASE_MODEL
                 pNet = std::dynamic_pointer_cast<IModel>(p);
                 #else
@@ -253,7 +270,7 @@ int main(int argc, const char* argv[]) {
                 #endif
                 params = net->parameters();
                 if (has_cuda) net->to(torch::kCUDA);
-                if (verbose)  outlog << *net;
+                LOGGER(DEBUG) << *net << std::endl;
                 #ifdef USE_BASE_MODEL
                 pNet = std::dynamic_pointer_cast<IModel>(p);
                 #else
@@ -266,21 +283,21 @@ int main(int argc, const char* argv[]) {
     /*auto model = pNet.ptr();
     params = model->parameters();
     if (has_cuda) model->to(torch::kCUDA);
-    if (verbose) outlog << *model;*/
+    LOGGER(DEBUG) << *model;*/
 
     std::shared_ptr<torch::optim::Optimizer> pOptim;
 
     switch (optimtype) {
         case OptimType::Adam:
-            if (verbose) outlog << "Using Adam " << std::endl;
+            LOGGER(DEBUG) << "Using Adam" << std::endl;
             pOptim = std::make_shared<torch::optim::Adam>(params, torch::optim::AdamOptions(lr));
             break;
         case OptimType::SGD:
-            if (verbose) outlog << "Using SGD " << std::endl;
+            LOGGER(DEBUG) << "Using SGD" << std::endl;
             pOptim = std::make_shared<torch::optim::SGD>(params, torch::optim::SGDOptions(lr));
             break;
         case OptimType::SGDAGC:
-            if (verbose) outlog << "Using SGDAGC " << std::endl;
+            LOGGER(DEBUG) << "Using SGDAGC" << std::endl;
             pOptim = std::make_shared<torch::optim::SGDAGC>(params, torch::optim::SGDAGCOptions(lr));
             break;
     }
@@ -288,8 +305,10 @@ int main(int argc, const char* argv[]) {
     //    std::pair<std::vector<std::string>, std::vector<Label>> pairs_training, pairs_validation;
     //    splitData(pair_images_labels, 0.8, pairs_training, pairs_validation);
 
+    show_gpu_memory();
 
     // Initialize DataAugmentationDataset class and read data
+    LOGGER(INFO) << "Generating data loaders with data augmentation..." << std::endl;
     auto dataAugRNG = cv::RNG();
     auto custom_dataset_train = DataAugmentationDataset(
         samples_train.first, samples_train.second, image_size, dataAugRNG
@@ -298,21 +317,21 @@ int main(int argc, const char* argv[]) {
         samples_valid.first, samples_valid.second, image_size, dataAugRNG
     ).map(torch::data::transforms::Stack<>());
 
+    LOGGER(INFO) << "Creating random samplers..." << std::endl;
     using RandomDataLoader = torch::data::samplers::RandomSampler;
-    size_t batch_size = 4;
-    size_t max_epochs = 2;
     auto data_loader_train = torch::data::make_data_loader<RandomDataLoader>(std::move(custom_dataset_train), batch_size);
     auto data_loader_valid = torch::data::make_data_loader<RandomDataLoader>(std::move(custom_dataset_valid), batch_size);
     auto train_size = custom_dataset_train.size().value();
     auto valid_size = custom_dataset_valid.size().value();
-    train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size, outlog, max_epochs);
+
+    show_gpu_memory();
+
+    LOGGER(INFO) << "Starting train/valid loop..." << std::endl;
+    train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size, max_epochs);
 
     auto end_time = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed_seconds = end_time - start_time;
-    outlog << "elapsed time: " << elapsed_seconds.count() << "s" << std::endl;
-
-    if (fileopen)
-        outfile.close();
+    LOGGER(INFO) << "Elapsed time: " << elapsed_seconds.count() << "s" << std::endl;
 
     return EXIT_SUCCESS;
 }

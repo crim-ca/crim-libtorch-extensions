@@ -7,6 +7,9 @@
 #include <set>
 #include <vector>
 
+#include "cuda.h"
+#include "cuda_runtime_api.h"
+
 #include <torch/torch.h>
 #include "torchvision/models/resnet.h"
 #include "opencv2/opencv.hpp"
@@ -38,6 +41,7 @@ torch::Tensor read_data(std::string location, uint64_t image_size, cv::RNG& rng)
         /*aspect_range*/    0,          // 1?
         /*hflip_ratio*/     0.2,
         /*vflip_ratio*/     0.2,
+        /*resize*/          true,
         /*rng*/             rng);
 
     torch::Tensor img_tensor = torch::from_blob(img.data, {img.rows, img.cols, 3}, torch::kByte);
@@ -79,18 +83,17 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
     Label label
 ) {
     std::vector<std::string> list_images;
-    std::vector<int> list_labels;
+    std::vector<Label> list_labels;
     for (auto path: folders_path) {
         std::replace(path.begin(), path.end(), '\\', '/');
-
         std::string base_name = path + "/";
-        // cout << "Reading from: " << base_name << endl;
         DIR* dir;
         struct dirent *ent;
         if ((dir = opendir(base_name.c_str())) != NULL) {
+            LOGGER(DEBUG) << "Loading directory: [" << base_name << "]... " /*<< std::endl*/;
+            size_t img_count = 0;
             while((ent = readdir(dir)) != NULL) {
                 std::string filename = ent->d_name;
-                // std::cout << filename << std::endl;
                 if (filename.length() && filename.find(".") != std::string::npos) {
 
                     // extract extension and compare lowercase to keep matches
@@ -99,13 +102,14 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
                     while (std::getline(iss, s, '.'))
                         ext = s;
                     std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c){ return std::tolower(c); });
-
                     if (ext == extension) {
                         list_images.push_back(base_name + ent->d_name);
                         list_labels.push_back(label);
+                        img_count++;
                     }
                 }
             }
+            LOGGER(DEBUG) << "found " << img_count << " samples matching (" << extension << ") extension" << std::endl;
             closedir(dir);
         } else {
             std::cout << "Could not open directory" << std::endl;
@@ -129,6 +133,8 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
             if (ent->d_type != DT_DIR)
                 continue;
             std::string dirname = ent->d_name;
+            if (dirname == ".." || dirname == ".")
+                continue;
             std::string dirpath = folder_path + "/" + dirname;
             subdirs.push_back(dirpath);
         }
@@ -179,5 +185,40 @@ void split_data(DataSamples srcPairs, double splitProportion, DataSamples& train
     {
         validationsPairs.first.push_back(srcPairs.first.at(*it));
         validationsPairs.second.push_back(srcPairs.second.at(*it));
+    }
+}
+
+/// Display human-readable byte size with units
+std::string humanizeBytes(size_t bytes) {
+    std::ostringstream out;
+    out.precision(2);
+    out << std::fixed;
+
+    float fBytes = static_cast<float>(bytes);
+    if (bytes <= 0) out << "0B";
+    else if (bytes >= 1073741824) out << fBytes / 1073741824. << "GB";
+    else if (bytes >= 1048576) out << fBytes / 1048576. << "MB";
+    else if (bytes >= 1024) out << fBytes / 1024. << "KB";
+
+    return out.str();
+};
+
+/// Displays how much memory is being used by all accessible GPU devices
+void show_gpu_memory() {
+    if (!torch::cuda::is_available()) {
+        LOGGER(INFO) << "GPU - no memory applicable!" << std::endl;
+        return;
+    }
+
+    int num_gpus;
+    size_t free, total;
+    cudaGetDeviceCount( &num_gpus );
+    for ( int gpu_id = 0; gpu_id < num_gpus; gpu_id++ ) {
+        cudaSetDevice( gpu_id );
+        int id;
+        cudaGetDevice( &id );
+        cudaMemGetInfo( &free, &total );
+        LOGGER(INFO) << std::setprecision(2) << "GPU " << id
+            << " memory: free=" << humanizeBytes(free) << ", total=" << humanizeBytes(total) << std::endl;
     }
 }

@@ -211,7 +211,7 @@ if(WITH_DATA_AUGMENTATION)
         # (better if Torch/TorchVision also compiled using it for optimizations)
         find_package(OpenCV REQUIRED)
     endif()
-    set(OPENCV_INCLUDE_DIRS "${opencv_INCLUDE_DIR}")  # compat MSVC
+    set(OPENCV_INCLUDE_DIRS "${OPENCV_INCLUDE_DIR}")  # compat MSVC
     message(DEBUG "Detected OpenCV includes: ${OPENCV_INCLUDE_DIRS}")
     message(DEBUG "OPENCV VERSION MAJOR: ${OpenCV_VERSION_MAJOR}")
     list(APPEND INCLUDE_DIRS  "${OPENCV_INCLUDE_DIRS}")

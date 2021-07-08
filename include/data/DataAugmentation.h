@@ -50,6 +50,7 @@ cv::Mat ImageTransform(
 	double aspect_range,
 	double hflip_ratio,
 	double vflip_ratio,
+	bool resize,
 	cv::RNG& rng
 );
 

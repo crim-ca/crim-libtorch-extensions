@@ -3,6 +3,10 @@ APP_ROOT      := $(abspath $(lastword $(MAKEFILE_NAME))/..)
 APP_NAME	  := CRIM LibTorch Extensions (C++/Python)
 MAKEFILE_PATH := $(APP_ROOT)/$(MAKEFILE_NAME)
 CMAKE 		  ?= $(shell which cmake3 || which cmake)	## cmake binary (path) to employ for building the project
+DEBUG		  ?=
+ifneq ($(DEBUG),)
+  CMAKE_DEBUG := --log-level=DEBUG
+endif
 
 # NOTE: (comments)
 # 	All *literal* comments should only be preceded by a single '#'
@@ -112,8 +116,9 @@ BUILD_CONFIG_VARS := \
 	PLOG_DIR
 
 # demo config
+# use by default known ImageNet location/data type
 DEMO_DATA_ROOT_DIR 	?= /misc/data20/visi/imagenet
-DEMO_DATA_EXT 		?= jpg
+DEMO_DATA_EXT 		?= jpeg
 DEMO_MODEL 			?= EfficientNetB0
 DEMO_OPTIM 			?= SGD
 DEMO_CONFIG_VARS := \
@@ -239,7 +244,7 @@ build:	## build C++ library extensions from source (refer to CMake variables to 
 	)
 	@mkdir -p "$(BUILD_DIR)"
 	@cd "$(BUILD_DIR)" && \
-		$(CMAKE) \
+		$(CMAKE) $(CMAKE_DEBUG) \
 			-DCMAKE_INSTALL_PREFIX=$(INSTALL_DIR) \
 			-DTORCH_DIR=$(TORCH_DIR) \
 			-DTORCHVISION_DIR=$(TORCHVISION_DIR) \

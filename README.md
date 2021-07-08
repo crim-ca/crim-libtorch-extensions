@@ -23,6 +23,7 @@ ______
 - [Debugging Runtime Errors](#debugging-runtime-errors)
   - [ImportError `generic_type` with Unknown Reference](#importerror-generic_type-with-unknown-reference)
   - [Unrecognized Symbol Error](#unrecognized-symbol-error)
+- [References](#references)
 
 [CLI11]: https://github.com/CLIUtils/CLI11
 [plog]: https://github.com/SergiusTheBest/plog
@@ -282,3 +283,10 @@ If the above situation occurs, uninstall any `pip` or `conda` installation. Then
 This should be not much more than preparing your environment variables to find references and define custom options,
 and then call `python setup.py install`. Finally, rebuild and install the extensions with the source libraries using
 the same command inside this repository.
+
+
+## References
+
+Contents within [include/data](include/data) and [source/data](source/data) files `DataAugmentation`, `RandomRotation`
+and `Util` are taken from [takmin/DataAugmentation](https://github.com/takmin/DataAugmentation) repository.
+

@@ -37,7 +37,7 @@
 
 namespace util{
 
-	//! �͂ݏo��̈���J�b�g
+	//! Rectangle shaping that extends beyond the image
 	cv::Rect TruncateRect(const cv::Rect& obj_rect, const cv::Size& img_size)
 	{
 		cv::Rect resize_rect = obj_rect;
@@ -60,7 +60,7 @@ namespace util{
 	}
 
 
-	//! ���S�𓮂������ɁA�͂ݏo��̈���J�b�g
+	//! Shape the rectangle that protrudes from the image while maintaining the center
 	cv::Rect TruncateRectKeepCenter(const cv::Rect& obj_rect, const cv::Size& max_size)
 	{
 		cv::Rect exp_rect = obj_rect;

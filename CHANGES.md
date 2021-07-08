@@ -4,7 +4,15 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Use [plog](https://github.com/SergiusTheBest/plog) for better flexibility over logging output and configuration.
+* Data
+  * Add resize image to data augmentation transform following other operations.
+
+* CLI
+  * Implement inline batch data loading to avoid memory error over larger datasets.
+  * Improve options hanlding to allow `--version` call without other unncessary inputs in that case.
+  * Allow Windows-like flag parameters (eg: `/arch`) when applicable.
+  * Use [plog](https://github.com/SergiusTheBest/plog) for better flexibility over logging output and configuration.
+  * Add utilities and much more log reporting of memory usage, loaded samples, and operations.
 
 [0.2.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.2.0) (2021-06-29)
 ------------------------------------------------------------------------------------------------------------------------

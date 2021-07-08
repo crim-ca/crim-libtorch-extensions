@@ -79,6 +79,7 @@ cv::Mat ImageTransform(
 	double aspect_range,
 	double hflip_ratio,
 	double vflip_ratio,
+	bool resize,
 	cv::RNG& rng
 ) {
 	assert(img.type() == CV_8UC1 || img.type() == CV_8UC3);
@@ -140,6 +141,11 @@ cv::Mat ImageTransform(
 	}
 	else {
 		dst4 = dst3;
+	}
+
+	// Resize to dimension
+	if (resize && (dst4.cols != image_size || dst4.rows != image_size)) {
+		cv::resize(dst4, dst4, cv::Size(image_size, image_size));
 	}
 	return dst4;
 }
