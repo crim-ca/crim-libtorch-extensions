@@ -21,6 +21,7 @@
     #define INFO plog::info
     #define WARN plog::warning
     #define ERROR plog::error
+    #define FATAL plog::fatal
     #define LOGGER(level) PLOG(level)
 
 #endif

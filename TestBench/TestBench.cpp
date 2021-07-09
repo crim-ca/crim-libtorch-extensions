@@ -368,7 +368,7 @@ int main(int argc, const char* argv[]) {
 
     }
     catch (const std::exception& e) {
-        LOGGER(ERROR) << "Unhandled exception occurred!" << std::endl << e.what() << std::endl;
+        LOGGER(FATAL) << "Unhandled exception occurred!" << std::endl << e.what() << std::endl;
         return EXIT_FAILURE;
     }
 
