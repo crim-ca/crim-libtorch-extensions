@@ -103,7 +103,7 @@ Otherwise, build and install can be done directly without futher setup.
 | Variable           | Description
 | ------------------ | ---------------------------------------------------------
 | `CLI11_DIR`        | Installation path of [CLI11][CLI11] library.
-| `PLOG_DIR`         | Installation path of [plog][plog] library.
+| `PLOG_DIR`         | Installation path of [plog][plog] library (can be disabled using `WITH_LOG_COUT`)).
 
 You can then call `CMake` as follows:
 

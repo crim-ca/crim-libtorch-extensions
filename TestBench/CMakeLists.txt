@@ -54,11 +54,17 @@ if(NOT CLI11_FOUND)
 endif()
 list(APPEND TestBench_INCLUDE_DIRS   "${CLI11_INCLUDE_DIR}")
 list(APPEND TestBench_EXTERNAL_DEPS  "${CLI11_TARGETS}")
-if(NOT PLOG_FOUND)
-    # https://github.com/SergiusTheBest/plog
-    find_package(plog REQUIRED)
+
+option(WITH_LOG_COUT "Use basic std::cout logging instead of advanced plog" OFF)
+if(NOT WITH_LOG_COUT)
+    if(NOT PLOG_FOUND)
+        # https://github.com/SergiusTheBest/plog
+        find_package(plog REQUIRED)
+    endif()
+    list(APPEND TestBench_INCLUDE_DIRS   "${PLOG_INCLUDE_DIR}")
+else()
+    list(APPEND TestBench_DEFINES   USE_LOG_COUT)
 endif()
-list(APPEND TestBench_INCLUDE_DIRS   "${PLOG_INCLUDE_DIR}")
 
 # add main project with lib extensions
 list(APPEND TestBench_EXTERNAL_DEPS "${PROJECT_TARGET}")

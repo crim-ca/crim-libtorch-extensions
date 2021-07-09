@@ -1,6 +1,13 @@
 #include "stdafx.h"
 #pragma hdrstop
 
+// memory
+#ifdef WIN32
+#include <windows.h>
+#else
+#include <unistd.h>
+#endif
+
 #include <algorithm>
 #include <exception>
 #include <fstream>
@@ -90,7 +97,6 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
         DIR* dir;
         struct dirent *ent;
         if ((dir = opendir(base_name.c_str())) != NULL) {
-            LOGGER(DEBUG) << "Loading directory: [" << base_name << "]... " /*<< std::endl*/;
             size_t img_count = 0;
             while((ent = readdir(dir)) != NULL) {
                 std::string filename = ent->d_name;
@@ -109,7 +115,9 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
                     }
                 }
             }
-            LOGGER(DEBUG) << "found " << img_count << " samples matching (" << extension << ") extension" << std::endl;
+            LOGGER(DEBUG)
+                << "Loading directory: [" << base_name << "] (extension: "
+                << extension << ") found samples: " << img_count << std::endl;
             closedir(dir);
         } else {
             std::cout << "Could not open directory" << std::endl;
@@ -203,6 +211,31 @@ std::string humanizeBytes(size_t bytes) {
     return out.str();
 };
 
+/// Displays how much memory is avaialble on the machine.
+void show_machine_memory() {
+    // reference: https://stackoverflow.com/a/2513561/5936364
+    size_t free, total;
+    #ifdef WIN32
+        MEMORYSTATUSEX status;
+        status.dwLength = sizeof(status);
+        GlobalMemoryStatusEx(&status);
+        free = status.ullAvailPhys;
+        total = status.ullTotalPhys;
+    #else
+        long pages = sysconf(_SC_PHYS_PAGES);
+        long page_size = sysconf(_SC_PAGE_SIZE);
+        long avail = sysconf(_SC_AVPHYS_PAGES);
+        free = avail * page_size;
+        total = pages * page_size;
+    #endif
+    float ratio = static_cast<float>(free) / static_cast<float>(total);
+    LOGGER(INFO)
+        << "Machine memory: free=" << humanizeBytes(free)
+        << ", total=" << humanizeBytes(total)
+        << std::setprecision(1) << std::fixed
+        << " (avail=" << ratio * 100. << "%, used=" << (1. - ratio) * 100. << "%) " << std::endl;
+}
+
 /// Displays how much memory is being used by all accessible GPU devices
 void show_gpu_memory() {
     if (!torch::cuda::is_available()) {
@@ -218,7 +251,11 @@ void show_gpu_memory() {
         int id;
         cudaGetDevice( &id );
         cudaMemGetInfo( &free, &total );
-        LOGGER(INFO) << std::setprecision(2) << "GPU " << id
-            << " memory: free=" << humanizeBytes(free) << ", total=" << humanizeBytes(total) << std::endl;
+        float ratio = static_cast<float>(free) / static_cast<float>(total);
+        LOGGER(INFO) << "GPU " << id
+            << " memory: free=" << humanizeBytes(free)
+            << ", total=" << humanizeBytes(total)
+            << std::setprecision(1) << std::fixed
+            << " (avail=" << ratio * 100. << "%, used=" << (1. - ratio) * 100. << "%) " << std::endl;
     }
 }

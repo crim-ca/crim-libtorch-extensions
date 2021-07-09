@@ -12,15 +12,7 @@
 #include <torch/torch.h>
 #include <torch/script.h>
 
-#include <plog/Log.h>
-#include "plog/Initializers/RollingFileInitializer.h"
-
-#define DEBUG plog::debug
-#define INFO plog::info
-#define WARN plog::warning
-#define ERROR plog::error
-#define LOGGER(level) std::cout
-//#define LOGGER(level) LOG(level)
+#include "logger.h"
 
 //######################################################################################################################
 // Utility definitions
@@ -147,18 +139,20 @@ public:
     {
         images = list_images;
         /*states = process_images(list_images, image_size, this->rng);*/
+        LOGGER(VERBOSE) << "Process labels..." << std::endl;
         labels = process_labels(list_labels);
         ds_size = list_images.size();
     }
 
     /// Returns the sample image and label as {torch::Tensor, torch::Tensor}
     torch::data::Example<> get(size_t index) override {
+        LOGGER(VERBOSE) << "Process image " << index << "..." << std::endl;
         /*torch::Tensor sample_img = states.at(index);*/
         std::string img_path = images.at(index);
         torch::Tensor sample_img = read_data(img_path, img_size, rng);
         torch::Tensor sample_label = labels.at(index);
 
-        LOGGER(DEBUG) << "Fetched sample " << sample_img.sizes() << " #" << index << std::endl;
+        LOGGER(VERBOSE) << "Fetched sample " << sample_img.sizes() << " #" << index << std::endl;
         return { sample_img.clone(), sample_label.clone() };
     };
 
@@ -179,8 +173,8 @@ public:
  * @param data_loader_train     Training sample set data loader
  * @param data_loader_train     Validation sample set data loader
  * @param optimizer             Optimizer to use (e.g.: Adam, SGD, etc.)
- * @param size_train            Size of training dataset
- * @param size_valid            Size of validation dataset
+ * @param train_size            Size of training dataset
+ * @param valid_size            Size of validation dataset
  * @param max_epochs            Maximum number of training epochs
  */
 template<typename Dataloader>
@@ -198,14 +192,14 @@ void train(
     Dataloader& data_loader_train,
     Dataloader& data_loader_valid,
     std::shared_ptr<torch::optim::Optimizer> optimizer,
-    size_t size_train,
-    size_t size_valid,
+    size_t train_size,
+    size_t valid_size,
     size_t max_epochs = 2
 ) {
     float best_accuracy = 0.0;
 
-    LOGGER(DEBUG) << "Training set size:   " << size_train << std::endl;
-    LOGGER(DEBUG) << "Validation set size: " << size_valid << std::endl;
+    LOGGER(DEBUG) << "Training set size:   " << train_size << std::endl;
+    LOGGER(DEBUG) << "Validation set size: " << valid_size << std::endl;
 
     for(size_t epoch=0; epoch<max_epochs; epoch++) {
         LOGGER(INFO) << "[train] epoch " << epoch << std::endl;
@@ -221,8 +215,10 @@ void train(
         for(auto& batch: *data_loader_train) {
             auto batch_size = batch.data.size(0);
             train_batch_cumul += batch_size;
-            LOGGER(DEBUG) << "[train] epoch " << epoch << " batch " << train_batch_index
-                       << " (" << train_batch_cumul << "/" << size_train << std::endl;
+            LOGGER(DEBUG)
+                << "[train] epoch " << epoch << " batch " << train_batch_index
+                << " (" << train_batch_cumul << "/" << train_size << ", "
+                << static_cast<float>(train_batch_cumul) / static_cast<float>(train_size) << "%)" << std::endl;
             auto data = batch.data;
             auto target = batch.target.squeeze();
 
@@ -262,8 +258,10 @@ void train(
         for (auto& batch : *data_loader_valid) {
             auto batch_size = batch.data.size(0);
             valid_batch_cumul += batch_size;
-            LOGGER(DEBUG) << "[valid] epoch " << epoch << " batch " << valid_batch_index
-                       << " (" << valid_batch_cumul << "/" << size_valid << std::endl;
+            LOGGER(DEBUG)
+                << "[valid] epoch " << epoch << " batch " << valid_batch_index
+                << " (" << valid_batch_cumul << "/" << valid_size << ", "
+                << static_cast<float>(valid_batch_cumul) / static_cast<float>(valid_size) << "%)" << std::endl;
             auto data = batch.data;
             auto target = batch.target.squeeze();
 
@@ -285,13 +283,13 @@ void train(
         mse = mse/float(train_batch_index); // Take mean of loss
         LOGGER(INFO)
             << "Epoch: " << epoch  << ", " << "MSE: " << mse << ", training accuracy: "
-            << acc / size_train << ", validation accuracy: " << valid_acc / size_valid << std::endl;
-        LOGGER(INFO) << "** " << mse << " " << acc / size_train << " " << valid_acc / size_valid << std::endl;
+            << acc / train_size << ", validation accuracy: " << valid_acc / valid_size << std::endl;
+        LOGGER(INFO) << "** " << mse << " " << acc / train_size << " " << valid_acc / valid_size << std::endl;
 
         /*test(net, data_loader, dataset_size, lin);*/
 
-        if(valid_acc/size_valid > best_accuracy) {
-            best_accuracy = valid_acc/size_valid;
+        if(valid_acc/valid_size > best_accuracy) {
+            best_accuracy = valid_acc/valid_size;
             LOGGER(DEBUG) << "Saving model [not implemented!]" << std::endl;
             ///net.get().save("model.pt");   need a cast?
             //torch::save(lin, "model_linear.pt");
@@ -389,6 +387,12 @@ void split_data(
  * @returns         Number of bytes abbreviated with B/KB/MB/GB unit.
  */
 std::string humanizeBytes(size_t bytes);
+
+/**
+ * @brief Displays how much memory is avaialble on the machine.
+ *
+ */
+void show_machine_memory();
 
 /**
  * @brief Displays how much memory is being used by all accessible GPU devices

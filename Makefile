@@ -121,11 +121,19 @@ DEMO_DATA_ROOT_DIR 	?= /misc/data20/visi/imagenet
 DEMO_DATA_EXT 		?= jpeg
 DEMO_MODEL 			?= EfficientNetB0
 DEMO_OPTIM 			?= SGD
+DEMO_MAX_EPOCHS 	?= 30
+DEMO_BATCH_SIZE 	?= 16
+DEMO_WORKERS		?= -1
+DEMO_LOG_LEVEL		?= verbose
 DEMO_CONFIG_VARS := \
 	DEMO_DATA_ROOT_DIR \
 	DEMO_DATA_EXT \
 	DEMO_MODEL \
-	DEMO_OPTIM
+	DEMO_OPTIM \
+	DEMO_MAX_EPOCHS \
+	DEMO_BATCH_SIZE \
+	DEMO_WORKERS \
+	DEMO_LOG_LEVEL
 
 ### --- Information targets --- ###
 
@@ -287,8 +295,12 @@ test-bench-demo: build  ## call the TestBench application with demo parameters (
 		--optim $(DEMO_OPTIM) \
 		--train $(DEMO_DATA_ROOT_DIR)/train \
 		--valid $(DEMO_DATA_ROOT_DIR)/val \
+		--max-epochs $(DEMO_MAX_EPOCHS) \
+		--batch-size $(DEMO_BATCH_SIZE) \
+		--workers $(DEMO_WORKERS) \
 		--extension $(DEMO_DATA_EXT) \
-		-v | tee $(APP_ROOT)/TestBench.log
+		--$(DEMO_LOG_LEVEL)
+#| tee $(APP_ROOT)/TestBench.log
 
 ### --- Versioning targets --- ###
 
