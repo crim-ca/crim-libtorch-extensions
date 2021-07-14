@@ -39,7 +39,7 @@ using namespace cv;
 
 cv::Mat ImageTransform(
 	const cv::Mat& img,
-	int64_t image_size,
+	uint64_t image_size,
 	double yaw_range,
 	double pitch_range,
 	double roll_range,

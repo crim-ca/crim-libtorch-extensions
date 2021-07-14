@@ -68,7 +68,7 @@ cv::Rect RandomDeformRect(
 
 cv::Mat ImageTransform(
 	const cv::Mat& img,
-	int64_t image_size,
+	uint64_t image_size,
 	double yaw_sigma,
 	double pitch_sigma,
 	double roll_sigma,
@@ -86,7 +86,6 @@ cv::Mat ImageTransform(
 
 	// Deform Rect Randomly
 	cv::Rect area(img.cols / 2 - image_size / 2, img.rows / 2 - image_size / 2, image_size, image_size);
-
 	cv::Rect rect = RandomDeformRect(area, x_slide_sigma, y_slide_sigma, aspect_range, rng);
 
 	rect = util::TruncateRect(rect, img.size());
@@ -143,10 +142,6 @@ cv::Mat ImageTransform(
 		dst4 = dst3;
 	}
 
-	// Resize to dimension
-	if (resize && (dst4.cols != image_size || dst4.rows != image_size)) {
-		cv::resize(dst4, dst4, cv::Size(image_size, image_size));
-	}
 	return dst4;
 }
 

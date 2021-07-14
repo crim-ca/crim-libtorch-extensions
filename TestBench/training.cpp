@@ -32,9 +32,11 @@
 
 /// Function to return image read at given path location
 torch::Tensor read_data(std::string location, uint64_t image_size, cv::RNG& rng) {
+    LOGGER(DEBUG) << "Read Image: [" << location << "]" << std::endl;
     cv::Mat image_raw = cv::imread(location, 1);
 
     // Data augmentation
+    LOGGER(DEBUG) << "Transform Image: [" << location << "]" << std::endl;
     auto img = ImageTransform(
         /*img*/             image_raw,
         /*size*/            image_size,
@@ -51,6 +53,7 @@ torch::Tensor read_data(std::string location, uint64_t image_size, cv::RNG& rng)
         /*resize*/          true,
         /*rng*/             rng);
 
+    LOGGER(DEBUG) << "Create Tensor: [" << location << "]" << std::endl;
     torch::Tensor img_tensor = torch::from_blob(img.data, {img.rows, img.cols, 3}, torch::kByte);
     img_tensor = img_tensor.permute({2, 0, 1});
     return img_tensor.clone();

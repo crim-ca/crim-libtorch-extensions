@@ -121,7 +121,7 @@ private:
     // Should be 2 tensors
     std::vector<torch::Tensor> labels/*, states*/;
     std::vector<std::string> images;
-    size_t img_size;
+    uint64_t img_size;
     size_t ds_size;
     cv::RNG& rng;
 public:
@@ -135,7 +135,7 @@ public:
      */
     DataAugmentationDataset(
         std::vector<std::string> list_images, std::vector<Label> list_labels, uint64_t image_size, cv::RNG& rng
-    ) : rng(rng)
+    ) : img_size(image_size), rng(rng)
     {
         images = list_images;
         /*states = process_images(list_images, image_size, this->rng);*/

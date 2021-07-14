@@ -231,6 +231,10 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
+        uint64_t image_size = 224;  // enforced by models input layer
+        LOGGER(DEBUG) << "Will resize sample images to:"
+                      << "(" << image_size << ", " << image_size << ")" << nb_class << std::endl;
+
         #ifdef USE_BASE_MODEL
         #ifdef USE_JIT_MODULE
         using ModelPtr = torch::jit::script::Module; /*IModel torch::nn::Module;*/
@@ -246,7 +250,6 @@ int main(int argc, const char* argv[]) {
 
         //torch::nn::AnyModule pNet;
         std::vector<torch::Tensor> params;
-        uint64_t image_size = 224;
         switch (archtype) {
             case ArchType::ResNet34:
                 {
