@@ -192,7 +192,9 @@ int main(int argc, const char* argv[]) {
                 LOGGER(DEBUG) << "Learning rate = " << lr << std::endl;
             if(clipping_opt->count()>0)
                 LOGGER(DEBUG) << "Lambda = " << clipping << std::endl;
-            LOGGER(DEBUG) << (has_cuda ? "CUDA detected!" : "CUDA missing! Will use CPU.") << std::endl;
+            LOGGER(INFO) << (has_cuda ? "CUDA detected!" : "CUDA missing! Will use CPU.") << std::endl;
+            if (has_cuda)
+                show_gpu_properties();
         }
 
         if (dataset_folder_train.empty() || dataset_folder_valid.empty()) {
@@ -200,7 +202,7 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        LOGGER(DEBUG) << "Loading samples..." << std::endl;
+        LOGGER(INFO) << "Loading samples..." << std::endl;
 
         // Get paths of images and labels from the folder paths
         std::pair<std::vector<std::string>, std::vector<Label>> samples_train = load_data_from_folder(
@@ -214,11 +216,11 @@ int main(int argc, const char* argv[]) {
         size_t nb_class_valid = count_classes(samples_valid.second);
         size_t nb_class = std::max(nb_class_train, nb_class_valid);
 
-        LOGGER(DEBUG) << "Number of found classes: " << nb_class << std::endl;
-        LOGGER(DEBUG) << "Number of train classes: " << nb_class_train << std::endl;
-        LOGGER(DEBUG) << "Number of valid classes: " << nb_class_valid << std::endl;
-        LOGGER(DEBUG) << "Number of train samples: " << samples_train.first.size() << std::endl;
-        LOGGER(DEBUG) << "Number of valid samples: " << samples_valid.first.size() << std::endl;
+        LOGGER(INFO) << "Number of found classes: " << nb_class << std::endl;
+        LOGGER(INFO) << "Number of train classes: " << nb_class_train << std::endl;
+        LOGGER(INFO) << "Number of valid classes: " << nb_class_valid << std::endl;
+        LOGGER(INFO) << "Number of train samples: " << samples_train.first.size() << std::endl;
+        LOGGER(INFO) << "Number of valid samples: " << samples_valid.first.size() << std::endl;
         show_machine_memory();
         show_gpu_memory();
 
@@ -231,9 +233,9 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        uint64_t image_size = 224;  // enforced by models input layer
-        LOGGER(DEBUG) << "Will resize sample images to:"
-                      << "(" << image_size << ", " << image_size << ")" << nb_class << std::endl;
+        uint64_t image_size = 224;
+        LOGGER(INFO) << "Will resize sample images to:"
+                     << "(" << image_size << ", " << image_size << ") [enforced by model input layer]" << std::endl;
 
         #ifdef USE_BASE_MODEL
         #ifdef USE_JIT_MODULE
@@ -262,6 +264,7 @@ int main(int argc, const char* argv[]) {
                     #endif
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
+                    LOGGER(INFO) << "Using ResNet34" << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
                     #ifdef USE_BASE_MODEL
                     pNet = std::dynamic_pointer_cast<IModel>(p);
@@ -282,6 +285,7 @@ int main(int argc, const char* argv[]) {
                     #endif
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
+                    LOGGER(INFO) << "Using EfficientNetB0" << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
                     #ifdef USE_BASE_MODEL
                     pNet = std::dynamic_pointer_cast<IModel>(p);
@@ -302,6 +306,7 @@ int main(int argc, const char* argv[]) {
                     #endif
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
+                    LOGGER(INFO) << "Using NFNet34" << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
                     #ifdef USE_BASE_MODEL
                     pNet = std::dynamic_pointer_cast<IModel>(p);
@@ -321,15 +326,15 @@ int main(int argc, const char* argv[]) {
 
         switch (optimtype) {
             case OptimType::Adam:
-                LOGGER(DEBUG) << "Using Adam" << std::endl;
+                LOGGER(INFO) << "Using Adam" << std::endl;
                 pOptim = std::make_shared<torch::optim::Adam>(params, torch::optim::AdamOptions(lr));
                 break;
             case OptimType::SGD:
-                LOGGER(DEBUG) << "Using SGD" << std::endl;
+                LOGGER(INFO) << "Using SGD" << std::endl;
                 pOptim = std::make_shared<torch::optim::SGD>(params, torch::optim::SGDOptions(lr));
                 break;
             case OptimType::SGDAGC:
-                LOGGER(DEBUG) << "Using SGDAGC" << std::endl;
+                LOGGER(INFO) << "Using SGDAGC" << std::endl;
                 pOptim = std::make_shared<torch::optim::SGDAGC>(params, torch::optim::SGDAGCOptions(lr));
                 break;
         }

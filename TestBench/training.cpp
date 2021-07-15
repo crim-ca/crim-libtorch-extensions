@@ -17,6 +17,7 @@
 #include "cuda.h"
 #include "cuda_runtime_api.h"
 
+#include <ATen/cuda/CUDAContext.h>
 #include <torch/torch.h>
 #include "torchvision/models/resnet.h"
 #include "opencv2/opencv.hpp"
@@ -207,9 +208,9 @@ std::string humanizeBytes(size_t bytes) {
 
     float fBytes = static_cast<float>(bytes);
     if (bytes <= 0) out << "0B";
-    else if (bytes >= 1073741824) out << fBytes / 1073741824. << "GB";
-    else if (bytes >= 1048576) out << fBytes / 1048576. << "MB";
-    else if (bytes >= 1024) out << fBytes / 1024. << "KB";
+    else if (bytes >= 1073741824) out << fBytes / 1073741824. << "GiB";
+    else if (bytes >= 1048576) out << fBytes / 1048576. << "MiB";
+    else if (bytes >= 1024) out << fBytes / 1024. << "KiB";
 
     return out.str();
 };
@@ -242,7 +243,7 @@ void show_machine_memory() {
 /// Displays how much memory is being used by all accessible GPU devices
 void show_gpu_memory() {
     if (!torch::cuda::is_available()) {
-        LOGGER(INFO) << "GPU - no memory applicable!" << std::endl;
+        LOGGER(INFO) << "No GPU - no memory applicable!" << std::endl;
         return;
     }
 
@@ -260,5 +261,23 @@ void show_gpu_memory() {
             << ", total=" << humanizeBytes(total)
             << std::setprecision(1) << std::fixed
             << " (avail=" << ratio * 100. << "%, used=" << (1. - ratio) * 100. << "%) " << std::endl;
+    }
+}
+
+void show_gpu_properties() {
+    if (!torch::cuda::is_available()) {
+        LOGGER(INFO) << "No GPU - cannot retrieve properties!" << std::endl;
+        return;
+    }
+
+    auto nb_devices = torch::cuda::device_count();
+    LOGGER(INFO) << "CUDA visible devices count: " << nb_devices << std::endl;
+    for (auto i_device = 0; i_device < nb_devices; i_device++) {
+        auto prop = at::cuda::getDeviceProperties(i_device);
+        LOGGER(INFO) << std::endl // skip log header
+                        << "Properties of CUDA device " << i_device << std::endl
+                        << "  Device Name:            " << prop->name << std::endl
+                        << "  Compute Capabilities:   " << prop->major << "." << prop->minor << std::endl
+                        << "  Total Available Memory: " << humanizeBytes(prop->totalGlobalMem) << std::endl;
     }
 }

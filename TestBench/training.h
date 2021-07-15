@@ -395,10 +395,16 @@ std::string humanizeBytes(size_t bytes);
 void show_machine_memory();
 
 /**
- * @brief Displays how much memory is being used by all accessible GPU devices
+ * @brief Displays how much memory is being used by all accessible GPU devices.
  *
  */
 void show_gpu_memory();
+
+/**
+ * @brief Displays useful properties about all accessible GPU devices.
+ *
+ */
+void show_gpu_properties();
 
 
 #endif // __TRAINING_H__
