@@ -14,6 +14,10 @@ ____________
   * Use [plog](https://github.com/SergiusTheBest/plog) for better flexibility over logging output and configuration.
   * Add utilities and much more log reporting of memory usage, loaded samples, and operations.
 
+* Fixes
+  * Adjust uninitialized dataset loader image size variable causing problems during creation of tensors with resize.
+  * Remove leftover duplicate files from previous merge operations.
+
 [0.2.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.2.0) (2021-06-29)
 ------------------------------------------------------------------------------------------------------------------------
 ____________
