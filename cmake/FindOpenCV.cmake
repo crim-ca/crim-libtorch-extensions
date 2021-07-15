@@ -73,7 +73,7 @@ if(NOT EXISTS ${OPENCV_SEARCH_PATH})
     )
 endif()
 message(DEBUG "OpenCV: search: ${OPENCV_SEARCH_PATH}")
-message(DEBUG "OpenCV: sub dir: ${OPENCV_INSTALL_SUFFIX_DIR}")
+message(DEBUG "OpenCV: suffix: ${OPENCV_INSTALL_SUFFIX_DIR}")
 
 # validate path with version header
 find_path(
@@ -96,11 +96,12 @@ if(NOT EXISTS ${OPENCV_SEARCH_PATH})
   endif()
 endif()
 message(STATUS "OpenCV: dir: ${OpenCV_DIR}")
-message(STATUS "OpenCV: using location: ${OPENCV_SEARCH_PATH}")
+message(STATUS "OpenCV: using search: ${OPENCV_SEARCH_PATH}")
+message(STATUS "OpenCV: include found: ${OPENCV_INCLUDE_DIR}")
 mark_as_advanced(OPENCV_SEARCH_PATH)
 mark_as_advanced(OPENCV_INCLUDE_DIR)
 
-if(NOT EXISTS ${OPENCV_INCLUDE_DIR})
+if(NOT EXISTS "${OPENCV_INCLUDE_DIR}")
     message(ERROR "Could not find OpenCV includes")
 else()
   set(OPENCV_INCLUDE_DIRS "${OPENCV_INCLUDE_DIR}")
