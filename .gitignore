@@ -15,6 +15,9 @@ install/
 *.a
 *.o
 
+## Test artifcats
+*.log
+
 ## External module common locations
 external/
 third[-_]party/

@@ -23,8 +23,10 @@ ______
 - [Debugging Runtime Errors](#debugging-runtime-errors)
   - [ImportError `generic_type` with Unknown Reference](#importerror-generic_type-with-unknown-reference)
   - [Unrecognized Symbol Error](#unrecognized-symbol-error)
+- [References](#references)
 
 [CLI11]: https://github.com/CLIUtils/CLI11
+[plog]: https://github.com/SergiusTheBest/plog
 [pytorch]: https://github.com/pytorch/pytorch
 [torchvision]: https://github.com/pytorch/vision
 
@@ -95,9 +97,13 @@ When ready, move on to the next sub-section according to the variant you want to
 
 ### Compile C++ Only
 
+Following requirements are needed if using `WITH_TEST_BENCH = ON` (CLI utility).
+Otherwise, build and install can be done directly without futher setup.
+
 | Variable           | Description
 | ------------------ | ---------------------------------------------------------
-| `CLI11_DIR`        | Installation path of [CLI11][CLI11] library (required only by `TestBench` CLI) <br>
+| `CLI11_DIR`        | Installation path of [CLI11][CLI11] library.
+| `PLOG_DIR`         | Installation path of [plog][plog] library (can be disabled using `WITH_LOG_COUT`)).
 
 You can then call `CMake` as follows:
 
@@ -277,3 +283,10 @@ If the above situation occurs, uninstall any `pip` or `conda` installation. Then
 This should be not much more than preparing your environment variables to find references and define custom options,
 and then call `python setup.py install`. Finally, rebuild and install the extensions with the source libraries using
 the same command inside this repository.
+
+
+## References
+
+Contents within [include/data](include/data) and [source/data](source/data) files `DataAugmentation`, `RandomRotation`
+and `Util` are taken from [takmin/DataAugmentation](https://github.com/takmin/DataAugmentation) repository.
+

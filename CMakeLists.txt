@@ -145,7 +145,7 @@ if(${WITH_PYTHON})
     endif()
 
     # find Python and pybind required to generate bindings
-    find_package(Python3 COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE})
+    find_package(Python3 COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE} ${Python3_ROOT_DIR})
     list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})
     list(APPEND EXTERNAL_LIBS ${Python_LIBRARIES})
 
@@ -211,7 +211,7 @@ if(WITH_DATA_AUGMENTATION)
         # (better if Torch/TorchVision also compiled using it for optimizations)
         find_package(OpenCV REQUIRED)
     endif()
-    set(OPENCV_INCLUDE_DIRS "${opencv_INCLUDE_DIR}")  # compat MSVC
+    set(OPENCV_INCLUDE_DIRS "${OPENCV_INCLUDE_DIR}")  # compat MSVC
     message(DEBUG "Detected OpenCV includes: ${OPENCV_INCLUDE_DIRS}")
     message(DEBUG "OPENCV VERSION MAJOR: ${OpenCV_VERSION_MAJOR}")
     list(APPEND INCLUDE_DIRS  "${OPENCV_INCLUDE_DIRS}")

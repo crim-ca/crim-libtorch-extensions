@@ -72,12 +72,12 @@ if(NOT EXISTS ${OPENCV_SEARCH_PATH})
         DOC "The directory where opencv is installed"
     )
 endif()
-message(DEBUG "OpenCV: tmp location: ${OPENCV_SEARCH_PATH}")
-message(DEBUG "OpenCV: sub dir: ${OPENCV_INSTALL_SUFFIX_DIR}")
+message(DEBUG "OpenCV: search: ${OPENCV_SEARCH_PATH}")
+message(DEBUG "OpenCV: suffix: ${OPENCV_INSTALL_SUFFIX_DIR}")
 
 # validate path with version header
 find_path(
-    opencv_INCLUDE_DIR
+    OPENCV_INCLUDE_DIR
     opencv2/core/version.hpp
     PATHS
         ${OpenCV_DIR}/include
@@ -89,25 +89,26 @@ find_path(
     DOC "The directory where opencv headers are installed"
 )
 if(NOT EXISTS ${OPENCV_SEARCH_PATH})
-  get_filename_component(OPENCV_SEARCH_PATH "${opencv_INCLUDE_DIR}" PATH)
+  get_filename_component(OPENCV_SEARCH_PATH "${OPENCV_INCLUDE_DIR}" PATH)
   # include dir is include/opencv4 in v4 UNIX
   if(UNIX AND OpenCV_VERSION_MAJOR EQUAL 4)
     get_filename_component(OPENCV_SEARCH_PATH "${OPENCV_SEARCH_PATH}" PATH)
   endif()
 endif()
 message(STATUS "OpenCV: dir: ${OpenCV_DIR}")
-message(STATUS "OpenCV: using location: ${OPENCV_SEARCH_PATH}")
+message(STATUS "OpenCV: using search: ${OPENCV_SEARCH_PATH}")
+message(STATUS "OpenCV: include found: ${OPENCV_INCLUDE_DIR}")
 mark_as_advanced(OPENCV_SEARCH_PATH)
-mark_as_advanced(opencv_INCLUDE_DIR)
+mark_as_advanced(OPENCV_INCLUDE_DIR)
 
-if(NOT EXISTS ${opencv_INCLUDE_DIR})
+if(NOT EXISTS "${OPENCV_INCLUDE_DIR}")
     message(ERROR "Could not find OpenCV includes")
 else()
-  set(OPENCV_INCLUDE_DIRS "${opencv_INCLUDE_DIR}")
+  set(OPENCV_INCLUDE_DIRS "${OPENCV_INCLUDE_DIR}")
 
   if(NOT OpenCV_VERSION)
-	message(DEBUG "OpenCV include dir: ${opencv_INCLUDE_DIR}")
-    file(READ "${opencv_INCLUDE_DIR}/opencv2/core/version.hpp" _header_content)
+	  message(DEBUG "OpenCV include dir: ${OPENCV_INCLUDE_DIR}")
+    file(READ "${OPENCV_INCLUDE_DIR}/opencv2/core/version.hpp" _header_content)
 
     # detect the type of version file (2.3.x , 2.4.x, 3.x or 4.x)
     string(REGEX MATCH  ".*# *define +CV_VERSION_EPOCH +([0-9]+).*" has_epoch ${_header_content})
@@ -202,7 +203,7 @@ message(DEBUG "OpenCV DLLS:")
 message_items("${OPENCV_DLLS}")
 
 set(OpenCV_FOUND FALSE)
-if( OPENCV_INCLUDE_DIRS AND NOT OPENCV_LIBRARIES STREQUAL "")
+if(OPENCV_INCLUDE_DIRS AND NOT OPENCV_LIBRARIES STREQUAL "")
   set(OpenCV_FOUND TRUE)
   set(OPENCV_VERSION ${OpenCV_VERSION}) #for compatility
 endif()
@@ -212,6 +213,12 @@ set(OPENCV_STATIC_LIBRARIES ${OPENCV_LIBRARIES})
 set(OPENCV_SHARED_LIBRARIES ${OPENCV_DLLS})
 mark_as_advanced(OPENCV_STATIC_LIBRARIES)
 mark_as_advanced(OPENCV_SHARED_LIBRARIES)
+
+# hide/show user-configurable variables
+mark_as_advanced(FORCE OPENCV_INCLUDE_DIR)
+mark_as_advanced(FORCE opencv_DIR)
+mark_as_advanced(FORCE OpenCV_DIR)
+mark_as_advanced(CLEAR OPENCV_DIR)
 
 include(${CMAKE_ROOT}/Modules/FindPackageHandleStandardArgs.cmake)
 if(MSVC)
@@ -225,7 +232,7 @@ else()
 	find_package_handle_standard_args(OpenCV
 	  REQUIRED_VARS
 	  OPENCV_LIBRARIES
-	  opencv_INCLUDE_DIR
+	  OPENCV_INCLUDE_DIR
 	  VERSION_VAR OpenCV_VERSION)
 endif()
 
