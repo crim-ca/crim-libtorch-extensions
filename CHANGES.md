@@ -4,6 +4,12 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
+* Nothing new for the moment.
+
+[0.3.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.3.0) (2021-07-15)
+------------------------------------------------------------------------------------------------------------------------
+____________
+
 * Data
   * Add resize image to data augmentation transform following other operations.
 
