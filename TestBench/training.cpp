@@ -39,6 +39,13 @@ torch::Tensor read_data(std::string location, uint64_t image_size, cv::RNG& rng)
 
     torch::Tensor img_tensor = torch::from_blob(img.data, {img.rows, img.cols, 3}, torch::kByte);
     img_tensor = img_tensor.permute({2, 0, 1});
+    img_tensor = img_tensor.to(at::kFloat)/255.0;
+
+    img_tensor[0][0] = img_tensor[0][0].sub(0.485).div(0.229);   //0.485, 0.456, 0.406
+    img_tensor[0][1] = img_tensor[0][1].sub(0.456).div(0.224);   //0.229, 0.224, 0.225
+    img_tensor[0][2] = img_tensor[0][2].sub(0.406).div(0.225);
+
+
     return img_tensor.clone();
 }
 

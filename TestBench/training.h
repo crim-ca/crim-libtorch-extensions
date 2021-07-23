@@ -170,44 +170,47 @@ void train(
         float mse = 0;
         float Acc = 0.0;
         float valid_acc = 0.0;
+        try {
+            for (auto& batch : *data_loader_train) {
+                auto data = batch.data;
+                auto target = batch.target.squeeze();
 
-        for(auto& batch: *data_loader_train) {
-            auto data = batch.data;
-            auto target = batch.target.squeeze();
+                // Should be of length: batch_size
+                data = data.to(torch::kF32).to(torch::kCUDA);
+                target = target.to(torch::kInt64).to(torch::kCUDA);
 
-            // Should be of length: batch_size
-            data = data.to(torch::kF32).to(torch::kCUDA);
-            target = target.to(torch::kInt64).to(torch::kCUDA);
+                //std::vector<torch::jit::IValue> input;
+                //input.push_back(data);
+                optimizer->zero_grad();
+#ifdef USE_BASE_MODEL
+                auto output = net->forward(data);
+#else
+                auto output = net.forward(data);
+#endif
 
-            //std::vector<torch::jit::IValue> input;
-            //input.push_back(data);
-            optimizer->zero_grad();
-            #ifdef USE_BASE_MODEL
-            auto output = net->forward(data);
-            #else
-            auto output = net.forward(data);
-            #endif
+                // For transfer learning
+                output = output.view({ output.size(0), -1 });
+                /*
+                outlog << output <<std::endl;
+                output = lin(output);
+                */
 
-            // For transfer learning
-            output = output.view({output.size(0), -1});
-            /*
-            outlog << output <<std::endl;
-            output = lin(output);
-            */
+                auto loss = torch::nll_loss(torch::log_softmax(output, 1), target);
 
-            auto loss = torch::nll_loss(torch::log_softmax(output, 1), target);
+                loss.backward();
+                optimizer->step();
 
-            loss.backward();
-            optimizer->step();
+                auto acc = output.argmax(1).eq(target).sum();
 
-            auto acc = output.argmax(1).eq(target).sum();
+                Acc += acc.template item<float>();
+                mse += loss.template item<float>();
 
-            Acc += acc.template item<float>();
-            mse += loss.template item<float>();
-
-            batch_index += 1;
+                batch_index += 1;
+            }
         }
-
+        catch (std::exception& e) {
+            std::cout << e.what() << std::endl;
+        }
         for (auto& batch : *data_loader_valid) {
             auto data = batch.data;
             auto target = batch.target.squeeze();
