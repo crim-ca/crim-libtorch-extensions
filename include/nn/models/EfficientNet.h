@@ -8,6 +8,7 @@
 #include "nn/modules/activation.h"
 
 #include <torch/torch.h>
+#include "torchvision/macros.h"  // VISION_API
 
 #include <algorithm>
 #include <tuple>
@@ -18,7 +19,7 @@
 namespace vision {
 namespace models {
 
-class Conv2dStaticSamePadding : public torch::nn::Conv2d
+class  Conv2dStaticSamePadding : public torch::nn::Conv2d
 {
 public:
     Conv2dStaticSamePadding() = default;
@@ -71,14 +72,15 @@ public:
                                                           .padding(this->get()->options.padding())
                                                           );
                                                           */
-        if (static_padding)
-            return F::conv2d(static_padding->forward(x),
-                             this->get()->weight,
-                             F::Conv2dFuncOptions()
-                                     .bias(this->get()->bias)
-                                     .stride(stride)
-                                     .groups(this->get()->options.groups())
-                                     .padding(this->get()->options.padding()));
+        if (static_padding) 
+            return  F::conv2d(static_padding->forward(x),
+                this->get()->weight,
+                F::Conv2dFuncOptions()
+                .bias(this->get()->bias)
+                .stride(stride)
+                .groups(this->get()->options.groups())
+                .padding(this->get()->options.padding()));
+
         return F::conv2d(x,
                          this->get()->weight,
                          F::Conv2dFuncOptions()
@@ -88,15 +90,15 @@ public:
                                  .padding(this->get()->options.padding()));
     }
 
-    torch::nn::ZeroPad2d static_padding{
-            nullptr}; //You are trying to default construct a module which has no default constructor...
+    torch::nn::ZeroPad2d static_padding = nullptr; /*{
+            nullptr}; //You are trying to default construct a module which has no default constructor...*/
     double stride;
     std::string name = "Conv2dStaticSamePadding";
 };
 
-struct BlockArgs
+struct  BlockArgs
 {
-    BlockArgs() {}
+    BlockArgs() = default;
     BlockArgs(int rep, int ksz, int strd, int expa, int inp, int outp, double se, bool skip)
         : repeats(rep)
         , kernel_size(ksz)
@@ -118,7 +120,7 @@ struct BlockArgs
     int stride;
 };
 
-struct EfficientNetOptions
+struct VISION_API EfficientNetOptions
 {
 public:
     EfficientNetOptions() = default;
@@ -163,7 +165,7 @@ public:
     int min_depth = -1;
 };
 
-struct MBConvBlockImpl : public torch::nn::Module
+struct  MBConvBlockImpl : public torch::nn::Module
 {
 public:
     MBConvBlockImpl() = default;
@@ -193,13 +195,13 @@ private:
 };
 TORCH_MODULE(MBConvBlock);
 
-struct EfficientNetV1Impl : torch::nn::Module
+struct VISION_API EfficientNetV1Impl : torch::nn::Module
 {
     //bool aux_logits, transform_input;
     EfficientNetV1Impl() = default;
     EfficientNetV1Impl(const EfficientNetOptions& params, size_t num_classes = 2);
     EfficientNetOptions _params;
-    Conv2dStaticSamePadding *_conv_stem, *_conv_head;
+    Conv2dStaticSamePadding *_conv_stem=nullptr, *_conv_head=nullptr;
     torch::nn::AdaptiveAvgPool2d _avg_pooling = nullptr;
     torch::nn::Dropout _dropout = nullptr;
     torch::nn::Linear _fc = nullptr;
@@ -221,7 +223,7 @@ struct EfficientNetV1Impl : torch::nn::Module
 
 TORCH_MODULE(EfficientNetV1);
 
-class EfficientNet : /*public IResizableModel, public IBaseModel, */ public EfficientNetV1Impl
+class  EfficientNet : /*public IResizableModel, public IBaseModel, */ public EfficientNetV1Impl
 {
 public:
     EfficientNet(
@@ -237,42 +239,42 @@ public:
     EfficientNet(const EfficientNet&) = default;
 };
 
-class EfficientNetB0 : public EfficientNet
+class  EfficientNetB0 : public EfficientNet
 {
 public:
     EfficientNetB0(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.0, 1.0, 224, 0.2}, nboutputs) {}
 };
-class EfficientNetB1 : public EfficientNet
+class  EfficientNetB1 : public EfficientNet
 {
 public:
     EfficientNetB1(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.0, 1.1, 240, 0.2}, nboutputs) {}
 };
-class EfficientNetB2 : public EfficientNet
+class  EfficientNetB2 : public EfficientNet
 {
 public:
     EfficientNetB2(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.1, 1.2, 260, 0.3}, nboutputs) {}
 };
-class EfficientNetB3 : public EfficientNet
+class  EfficientNetB3 : public EfficientNet
 {
 public:
     EfficientNetB3(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.2, 1.4, 300, 0.3}, nboutputs) {}
 };
-class EfficientNetB4 : public EfficientNet
+class  EfficientNetB4 : public EfficientNet
 {
 public:
     EfficientNetB4(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.4, 1.8, 380, 0.4}, nboutputs) {}
 };
-class EfficientNetB5 : public EfficientNet
+class  EfficientNetB5 : public EfficientNet
 {
 public:
     EfficientNetB5(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.6, 2.2, 456, 0.4}, nboutputs) {}
 };
-class EfficientNetB6 : public EfficientNet
+class  EfficientNetB6 : public EfficientNet
 {
 public:
     EfficientNetB6(size_t nboutputs) : EfficientNet(EfficientNetOptions{1.8, 2.6, 528, 0.5}, nboutputs) {}
 };
-class EfficientNetB7 : public EfficientNet
+class  EfficientNetB7 : public EfficientNet
 {
 public:
     EfficientNetB7(size_t nboutputs) : EfficientNet(EfficientNetOptions{2.0, 3.1, 600, 0.5}, nboutputs) {}
