@@ -56,7 +56,7 @@ cv::Rect RandomDeformRect(
 	cv::Rect dst_rect;
 	double deform = aspect_change / (2.0 + aspect_change);
 	dst_rect.width = input_rect.width * (1.0 + deform);
-	dst_rect.height = input_rect.height * (1.0 - deform);
+	dst_rect.height = input_rect.height;// *(1.0 - deform);     // Commented to avoid rects smaller than expected
 	dst_rect.x = input_rect.x + (input_rect.width - dst_rect.width) / 2;
 	dst_rect.y = input_rect.y + (input_rect.height - dst_rect.height) / 2;
 	dst_rect.x += x_mv_r * dst_rect.width;
