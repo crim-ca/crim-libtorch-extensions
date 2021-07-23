@@ -1,3 +1,5 @@
+
+#include <stdafx.h>
 // From https://github.com/pytorch/examples/blob/master/cpp/transfer-learning/main.cpp
 #include <memory>
 #include <algorithm>
@@ -17,7 +19,6 @@
 #include "nn/models/ResNet.h"
 #include "optim/SGD_AGC.h"
 #include "version.h"
-
 #include "training.h"
 
 using namespace vision::models;  // some from TorchVision, others from our Extensions
@@ -184,8 +185,9 @@ int main(int argc, const char* argv[]) {
                 #else
                 auto net = p;
                 #endif
-                params = net->parameters();
-                if (has_cuda) net->to(torch::kCUDA);
+                
+                params = p.get()->parameters();
+                if (has_cuda) p.get()->to(torch::kCUDA);
                 if (verbose)  outlog << *net;
                 #ifdef USE_BASE_MODEL
                 pNet = std::dynamic_pointer_cast<IModel>(p);
@@ -199,6 +201,7 @@ int main(int argc, const char* argv[]) {
             {
                 //pNet = std::make_shared<EfficientNetV1>(EfficientNetOptions{ 1.0, 1.0, 224, 0.2 }, nb_class);
                 auto p = std::make_shared<EfficientNetB0CLI>(nb_class);
+                
                 #ifdef USE_BASE_MODEL
                 auto net = p.get();
                 #else
@@ -240,7 +243,6 @@ int main(int argc, const char* argv[]) {
     params = model->parameters();
     if (has_cuda) model->to(torch::kCUDA);
     if (verbose) outlog << *model;*/
-
     std::shared_ptr<torch::optim::Optimizer> pOptim;
 
     switch (optimtype) {
