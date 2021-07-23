@@ -35,7 +35,7 @@
 #define __RANDOM_ROTATION_H__
 
 #include <opencv2/imgproc/imgproc.hpp>
-using namespace cv;
+
 
 void RandomRotateImage(
 	const cv::Mat& src,
