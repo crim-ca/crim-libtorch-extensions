@@ -3,6 +3,7 @@
 #include <torch/arg.h>
 #include <torch/nn/module.h>
 #include <torch/optim/optimizer.h>
+#include <torch/optim/sgd.h>
 #include <torch/types.h>
 
 #include <cstddef>
@@ -48,7 +49,7 @@ struct  SGDAGCOptions
     public:
         void serialize(torch::serialize::InputArchive& archive) override;
         void serialize(torch::serialize::OutputArchive& archive) const override;
-        TORCH_API friend bool operator==(const SGDOptions& lhs, const SGDOptions& rhs);
+        TORCH_API friend bool operator==(const torch::optim::SGDOptions& lhs, const torch::optim::SGDOptions& rhs);
         ~SGDAGCOptions() = default;
     };
 
