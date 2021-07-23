@@ -1,3 +1,5 @@
+#if 0
+#include <stdafx.h>
 //
 //  main.cpp
 //  transfer-learning
@@ -11,7 +13,7 @@
 
 #include "opencv2/imgcodecs.hpp"
 #include "training.h"
-#include "models/EfficientNet.h"
+#include "nn/models/EfficientNet.h"
 #include "models/SGD_AGC.h"
 
 
@@ -291,3 +293,4 @@ int main(int argc, const char * argv[]) {
 
     return 0;
 }
+#endif
