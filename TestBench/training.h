@@ -8,11 +8,11 @@
 #include /*GNU*/ <dirent.h>
 #endif
 
-#include <iostream>
-
 #include <opencv2/opencv.hpp>
 #include <torch/torch.h>
 #include <torch/script.h>
+
+#include "logger.h"
 
 //######################################################################################################################
 // Utility definitions
@@ -71,18 +71,46 @@ std::vector<torch::Tensor> process_images(std::vector<std::string> list_images, 
 /**
  * @brief Process vector of tensors (labels) read from the list of labels
  *
- * @param list_labels       list of labaels to load
+ * @param list_labels       list of labels to load
  * @return                  list of labels converted to tensors
  */
 std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels);
 
 /**
- * @brief Load data from given folder(s) name(s) (folders_name)
+ * @brief Load data and labels corresponding to images from given folder(s).
  *
- * @param folders_name      name of folders as a vector to load data from
+ * @param folders_path      Folders paths as a vector to load nested data from
+ * @param extension         Extension of files that corresponds to images to be considered for loading from folders.
+ * @param label             Label to be applied to all images retrieved from all the folders.
  * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
  */
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(std::vector<std::string> folders_name);
+std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
+    std::vector<std::string> folders_path,
+    std::string extension,
+    Label label
+);
+
+/**
+ * @brief Load data and labels corresponding to images from multiple sub-folders.
+ *
+ * Labels are generated iteratively, from 0 to N sub-folders sorted alphanumerically.
+ *
+ * @param folder_path       Parent folder under which to load sub-folders corresponding to different image classes.
+ * @param extension         Extension of files that corresponds to images to be considered for loading from folders.
+ * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
+ */
+std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
+    std::string folder_path,
+    std::string extension
+);
+
+/**
+ * @brief Counts the number of unique classes using a set of labeled data.
+ *
+ * @param labels            List of labels associated to loaded data.
+ * @return                  Number of distinct classes.
+ */
+size_t count_classes(const std::vector<Label> labels);
 
 /**
  * @brief Dataset that loads and pre-processes the images and corresponding labels with data augmentation.
@@ -91,7 +119,9 @@ class DataAugmentationDataset : public torch::data::Dataset<DataAugmentationData
 private:
     /* data */
     // Should be 2 tensors
-    std::vector<torch::Tensor> states, labels;
+    std::vector<torch::Tensor> labels/*, states*/;
+    std::vector<std::string> images;
+    uint64_t img_size;
     size_t ds_size;
     cv::RNG& rng;
 public:
@@ -105,17 +135,26 @@ public:
      */
     DataAugmentationDataset(
         std::vector<std::string> list_images, std::vector<Label> list_labels, uint64_t image_size, cv::RNG& rng
-    ) : rng(rng)
+    ) : img_size(image_size), rng(rng)
     {
-        states = process_images(list_images, image_size, this->rng);
+        images = list_images;
+        /*states = process_images(list_images, image_size, this->rng);*/
+        LOGGER(VERBOSE) << "Process labels..." << std::endl;
         labels = process_labels(list_labels);
-        ds_size = states.size();
+        ds_size = list_images.size();
     }
 
+    /// Returns the sample image and label as {torch::Tensor, torch::Tensor}
     torch::data::Example<> get(size_t index) override {
-        /* This should return {torch::Tensor, torch::Tensor} */
-        torch::Tensor sample_img = states.at(index);
+       
+
+        LOGGER(VERBOSE) << "Process image " << index << "..." << std::endl;
+        /*torch::Tensor sample_img = states.at(index);*/
+        std::string img_path = images.at(index);
+        torch::Tensor sample_img = read_data(img_path, img_size, rng);
         torch::Tensor sample_label = labels.at(index);
+
+        LOGGER(VERBOSE) << "Fetched sample " << sample_img.sizes() << " #" << index << std::endl;
         return { sample_img.clone(), sample_label.clone() };
     };
 
@@ -136,9 +175,8 @@ public:
  * @param data_loader_train     Training sample set data loader
  * @param data_loader_train     Validation sample set data loader
  * @param optimizer             Optimizer to use (e.g.: Adam, SGD, etc.)
- * @param size_train            Size of training dataset
- * @param size_valid            Size of validation dataset
- * @param outlgo                Stream handler to output log details
+ * @param train_size            Size of training dataset
+ * @param valid_size            Size of validation dataset
  * @param max_epochs            Maximum number of training epochs
  */
 template<typename Dataloader>
@@ -156,22 +194,33 @@ void train(
     Dataloader& data_loader_train,
     Dataloader& data_loader_valid,
     std::shared_ptr<torch::optim::Optimizer> optimizer,
-    size_t size_train,
-    size_t size_valid,
-    std::ostream& outlog,
+    size_t train_size,
+    size_t valid_size,
     size_t max_epochs = 2
 ) {
     float best_accuracy = 0.0;
-    size_t batch_index = 0;
-    outlog << "Training set size: " << size_train << std::endl;
-    outlog << "Validation set size: " << size_valid << std::endl;
+
+    LOGGER(DEBUG) << "Training set size:   " << train_size << std::endl;
+    LOGGER(DEBUG) << "Validation set size: " << valid_size << std::endl;
 
     for(size_t epoch=0; epoch<max_epochs; epoch++) {
+        LOGGER(INFO) << "[train] epoch " << epoch << std::endl;
         float mse = 0;
-        float Acc = 0.0;
+        float acc = 0.0;
         float valid_acc = 0.0;
+        size_t train_batch_index = 0;
+        size_t valid_batch_index = 0;
+        size_t train_batch_cumul = 0;
+        size_t valid_batch_cumul = 0;
         try {
             for (auto& batch : *data_loader_train) {
+                auto batch_size = batch.data.size(0);
+                train_batch_cumul += batch_size;
+                LOGGER(DEBUG)
+                    << "[train] epoch " << epoch << " batch " << train_batch_index
+                    << " (" << train_batch_cumul << "/" << train_size << ", " 
+                    << 100.0*static_cast<float>(train_batch_cumul) / static_cast<float>(train_size) << "%)" << std::endl;
+
                 auto data = batch.data;
                 auto target = batch.target.squeeze();
 
@@ -182,11 +231,11 @@ void train(
                 //std::vector<torch::jit::IValue> input;
                 //input.push_back(data);
                 optimizer->zero_grad();
-#ifdef USE_BASE_MODEL
+                #ifdef USE_BASE_MODEL
                 auto output = net->forward(data);
-#else
+                #else
                 auto output = net.forward(data);
-#endif
+                #endif
 
                 // For transfer learning
                 output = output.view({ output.size(0), -1 });
@@ -200,18 +249,25 @@ void train(
                 loss.backward();
                 optimizer->step();
 
-                auto acc = output.argmax(1).eq(target).sum();
+                auto pred = output.argmax(1).eq(target).sum();
 
-                Acc += acc.template item<float>();
+                acc += pred.template item<float>();
                 mse += loss.template item<float>();
 
-                batch_index += 1;
+                train_batch_index += 1;
             }
         }
         catch (std::exception& e) {
             std::cout << e.what() << std::endl;
         }
+
         for (auto& batch : *data_loader_valid) {
+            auto batch_size = batch.data.size(0);
+            valid_batch_cumul += batch_size;
+            LOGGER(DEBUG)
+                << "[valid] epoch " << epoch << " batch " << valid_batch_index
+                << " (" << valid_batch_cumul << "/" << valid_size << ", "
+                << 100.0*static_cast<float>(valid_batch_cumul) / static_cast<float>(valid_size) << "%)" << std::endl;
             auto data = batch.data;
             auto target = batch.target.squeeze();
 
@@ -225,22 +281,22 @@ void train(
             auto output = net.forward(data);
             #endif
             output = output.view({ output.size(0), -1 });
-            auto acc = output.argmax(1).eq(target).sum();
-
-            valid_acc += acc.template item<float>();
+            auto pred = output.argmax(1).eq(target).sum();
+            valid_acc += pred.template item<float>();
         }
 
 
-        mse = mse/float(batch_index); // Take mean of loss
-        outlog << "Epoch: " << epoch  << ", " << "MSE: " << mse << ", training accuracy: "
-               << Acc / size_train << ", validation accuracy: " << valid_acc / size_valid << std::endl;
-        outlog << "** " << mse << " "<< Acc / size_train << " " << valid_acc / size_valid << std::endl;
+        mse = mse/float(train_batch_index); // Take mean of loss
+        LOGGER(INFO) << std::setprecision(3)
+            << "Epoch: " << epoch  << ", " << "MSE: " << mse << ", training accuracy: "
+            << acc / train_size << ", validation accuracy: " << valid_acc / valid_size << std::endl;
+        LOGGER(INFO) << "** " << mse << " " << acc/train_size  << " " << valid_acc/valid_size  << std::endl;
 
         /*test(net, data_loader, dataset_size, lin);*/
 
-        if(valid_acc/size_valid > best_accuracy) {
-            best_accuracy = valid_acc/size_valid;
-            outlog << "Saving model" << std::endl;
+        if(valid_acc/valid_size > best_accuracy) {
+            best_accuracy = valid_acc/valid_size;
+            LOGGER(DEBUG) << "Saving model [not implemented!]" << std::endl;
             ///net.get().save("model.pt");   need a cast?
             //torch::save(lin, "model_linear.pt");
         }
@@ -327,6 +383,34 @@ void split_data(
     DataSamples& trainingPairs,
     DataSamples& validationsPairs
 );
-#endif
+#endif  // 0 (test)
+
+
+/**
+ * @brief Display human-readable byte size with units
+ *
+ * @param bytes     Number of bytes that need to be reported in human-readable format.
+ * @returns         Number of bytes abbreviated with B/KB/MB/GB unit.
+ */
+std::string humanizeBytes(size_t bytes);
+
+/**
+ * @brief Displays how much memory is avaialble on the machine.
+ *
+ */
+void show_machine_memory();
+
+/**
+ * @brief Displays how much memory is being used by all accessible GPU devices.
+ *
+ */
+void show_gpu_memory();
+
+/**
+ * @brief Displays useful properties about all accessible GPU devices.
+ *
+ */
+void show_gpu_properties();
+
 
 #endif // __TRAINING_H__

@@ -19,7 +19,7 @@ list(APPEND tests_DEPS "torch")
 # if(NOT OPENCV_FOUND)
 # 	find_package(OpenCV REQUIRED)
 # endif()
-# set(OPENCV_INCLUDE_DIRS "${opencv_INCLUDE_DIR}")  # compat MSVC
+# set(OPENCV_INCLUDE_DIRS "${OPENCV_INCLUDE_DIR}")  # compat MSVC
 # list(APPEND tests_INCLUDE_DIRS  "${OPENCV_INCLUDE_DIRS}")
 # list(APPEND tests_LIBS "${OPENCV_LIBRARIES}")
 # list(APPEND tests_DLLS "${OPENCV_DLLS}")

@@ -39,7 +39,7 @@
 
 cv::Mat VISION_API ImageTransform(
 	const cv::Mat& img,
-	int64_t image_size,
+	uint64_t image_size,
 	double yaw_range,
 	double pitch_range,
 	double roll_range,
@@ -50,6 +50,7 @@ cv::Mat VISION_API ImageTransform(
 	double aspect_range,
 	double hflip_ratio,
 	double vflip_ratio,
+	bool resize,
 	cv::RNG& rng
 );
 

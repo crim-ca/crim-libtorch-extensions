@@ -42,7 +42,7 @@ if(NOT OPENCV_FOUND)
     # (better if Torch/TorchVision also compiled using it for optimizations)
 	find_package(OpenCV REQUIRED)
 endif()
-set(OPENCV_INCLUDE_DIRS "${opencv_INCLUDE_DIR}")  # compat MSVC
+set(OPENCV_INCLUDE_DIRS "${OPENCV_INCLUDE_DIR}")  # compat MSVC
 message(DEBUG "Detected OpenCV includes: ${OPENCV_INCLUDE_DIRS}")
 message(DEBUG "OPENCV VERSION MAJOR: ${OpenCV_VERSION_MAJOR}")
 list(APPEND TestBench_INCLUDE_DIRS  "${OPENCV_INCLUDE_DIRS}")
@@ -54,6 +54,17 @@ if(NOT CLI11_FOUND)
 endif()
 list(APPEND TestBench_INCLUDE_DIRS   "${CLI11_INCLUDE_DIR}")
 list(APPEND TestBench_EXTERNAL_DEPS  "${CLI11_TARGETS}")
+
+option(WITH_LOG_COUT "Use basic std::cout logging instead of advanced plog" OFF)
+if(NOT WITH_LOG_COUT)
+    if(NOT PLOG_FOUND)
+        # https://github.com/SergiusTheBest/plog
+        find_package(plog REQUIRED)
+    endif()
+    list(APPEND TestBench_INCLUDE_DIRS   "${PLOG_INCLUDE_DIR}")
+else()
+    list(APPEND TestBench_DEFINES   USE_LOG_COUT)
+endif()
 
 # add main project with lib extensions
 list(APPEND TestBench_EXTERNAL_DEPS "${PROJECT_TARGET}")

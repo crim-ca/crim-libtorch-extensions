@@ -160,7 +160,7 @@
     <ClInclude Include="..\DataAugmentation\DataAugmentation.h" />
     <ClInclude Include="..\DataAugmentation\RandomRotation.h" />
     <ClInclude Include="..\DataAugmentation\Util.h" />
-    <ClInclude Include="..\include\dirent.h" />
+    <ClInclude Include="..\include\windows\dirent.h" />
     <ClInclude Include="..\include\models\NFNet.h" />
     <ClInclude Include="..\include\models\SGD_AGC.h" />
     <ClInclude Include="..\include\models\EfficientNet.h" />

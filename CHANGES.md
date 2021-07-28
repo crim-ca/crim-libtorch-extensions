@@ -6,6 +6,32 @@ ____________
 
 * Nothing new for the moment.
 
+[0.3.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.3.0) (2021-07-15)
+------------------------------------------------------------------------------------------------------------------------
+____________
+
+* Data
+  * Add resize image to data augmentation transform following other operations.
+
+* CLI
+  * Implement inline batch data loading to avoid memory error over larger datasets.
+  * Improve options hanlding to allow `--version` call without other unncessary inputs in that case.
+  * Allow Windows-like flag parameters (eg: `/arch`) when applicable.
+  * Use [plog](https://github.com/SergiusTheBest/plog) for better flexibility over logging output and configuration.
+  * Add utilities and much more log reporting of memory usage, loaded samples, and operations.
+
+* Fixes
+  * Adjust uninitialized dataset loader image size variable causing problems during creation of tensors with resize.
+  * Remove leftover duplicate files from previous merge operations.
+
+[0.2.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.2.0) (2021-06-29)
+------------------------------------------------------------------------------------------------------------------------
+____________
+
+* Remove duplicate files following merge resolution with other pending branches.
+* Fix GNU `dirent.h` incorrectly including Windows-specific header by moving it into dedicated `windows` directory.
+* Add utility targets to local `Makefile` to dispatch build, install, and basic test calls.
+
 [0.1.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.1.0) (2021-06-03)
 ------------------------------------------------------------------------------------------------------------------------
 ____________

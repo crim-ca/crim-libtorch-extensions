@@ -80,6 +80,17 @@ set(PROJECT_SOURCES_DIR "${PROJECT_SOURCE_DIR}/source")
 file(GLOB_RECURSE PROJECT_HEADERS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_INCLUDE_DIR}/*.h")
 file(GLOB_RECURSE PROJECT_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_SOURCES_DIR}/*.cpp")
 
+if(NOT WIN32)
+    file(GLOB_RECURSE EXCLUDE_HEADERS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_INCLUDE_DIR}/windows/*.h")
+    file(GLOB_RECURSE EXCLUDE_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_SOURCES_DIR}/windows/*.cpp")
+    foreach(file ${EXCLUDE_HEADERS})
+        list(REMOVE_ITEM PROJECT_HEADERS ${file})
+    endforeach()
+    foreach(file ${EXCLUDE_SOURCES})
+        list(REMOVE_ITEM PROJECT_SOURCES ${file})
+    endforeach()
+endif()
+
 # data augmentation required by test bench
 if(NOT WITH_DATA_AUGMENTATION AND WITH_TEST_BENCH)
     message(WARNING "Forcing WITH_DATA_AUGMENTATION=ON because WITH_TEST_BENCH was requested")
@@ -134,7 +145,7 @@ if(${WITH_PYTHON})
     endif()
 
     # find Python and pybind required to generate bindings
-    find_package(Python3 COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE})
+    find_package(Python3 COMPONENTS Development Interpreter HINTS ${PYTHON_EXECUTABLE} ${Python3_ROOT_DIR})
     list(APPEND INCLUDE_DIRS ${Python_INCLUDE_DIRS})
     list(APPEND EXTERNAL_LIBS ${Python_LIBRARIES})
 
@@ -200,7 +211,7 @@ if(WITH_DATA_AUGMENTATION)
         # (better if Torch/TorchVision also compiled using it for optimizations)
         find_package(OpenCV REQUIRED)
     endif()
-    set(OPENCV_INCLUDE_DIRS "${opencv_INCLUDE_DIR}")  # compat MSVC
+    set(OPENCV_INCLUDE_DIRS "${OPENCV_INCLUDE_DIR}")  # compat MSVC
     message(DEBUG "Detected OpenCV includes: ${OPENCV_INCLUDE_DIRS}")
     message(DEBUG "OPENCV VERSION MAJOR: ${OpenCV_VERSION_MAJOR}")
     list(APPEND INCLUDE_DIRS  "${OPENCV_INCLUDE_DIRS}")
