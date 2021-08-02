@@ -4,6 +4,12 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
+* Nothing new for the moment.
+
+[0.4.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.4.0) (2021-08-02)
+------------------------------------------------------------------------------------------------------------------------
+____________
+
 * Data
   - Remove deform condition to avoid `rect` definition smaller than expected.
   - Add data normalization of Tensors against ImageNet default mean and standard deviation values.
