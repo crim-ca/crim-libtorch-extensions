@@ -4,7 +4,7 @@
 #include "torchvision/models/resnet.h"
 
 //#include "../macros.h"
-#define VISION_API
+//#define VISION_API
 
 /*namespace vision {
     namespace models {*/

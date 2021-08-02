@@ -2,7 +2,7 @@
 
 #ifdef USE_LOG_COUT
 
-    #define LOGGER(level) std::cout
+    #define LOGGER(level) std::cout 
 
 #else
 

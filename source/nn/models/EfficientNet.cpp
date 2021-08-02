@@ -63,7 +63,7 @@ void test_round_filters()
     p.width_coefficient = 10;
     auto a = {3, 6, 9, 11, 13, 15, 21};
     for (auto ai : a) {
-        std::cout << round_filters(ai, p) << std::endl;
+        //std::cout << round_filters(ai, p) << std::endl;
     }
 }
 
@@ -165,6 +165,8 @@ torch::Tensor MBConvBlockImpl::forward(torch::Tensor inputs, double drop_connect
 {
     auto x = inputs;
     if (_block_args.expand_ratio != 1) {
+        x = _expand_conv->forward(x);    // missing?
+        x = _bn0->forward(x);           // missing?
         x = _params.activation(x);
     }
     auto xx = _depthwise_conv->forward(x);
@@ -207,8 +209,8 @@ EfficientNetV1Impl::EfficientNetV1Impl(const EfficientNetOptions& params, size_t
         ba.output_filters = round_filters(ba.output_filters, _params);
         ba.repeats = round_repeats(ba.repeats, _params);
 
-//        std::cout << "Layer " << blkno << ": " << ba.input_filters << "->" << ba.output_filters
-  //                << ", rep=" << ba.repeats << ", stride: " <<ba.stride <<", "<< imgsize_w << "x" << imgsize_h << std::endl;
+       // std::cout << "Layer " << blkno << ": " << ba.input_filters << "->" << ba.output_filters
+       //           << ", rep=" << ba.repeats << ", stride: " <<ba.stride <<", "<< imgsize_w << "x" << imgsize_h << std::endl;
 
         auto blk = new MBConvBlock(ba, _params, imgsize_w, imgsize_h);
         register_module("mbconvblk_" + std::to_string(blkno), *blk);
@@ -224,7 +226,7 @@ EfficientNetV1Impl::EfficientNetV1Impl(const EfficientNetOptions& params, size_t
         for (auto i = 0; i < ba.repeats - 1; i++) {
             auto blk_rep = new MBConvBlock(ba, _params, imgsize_w, imgsize_h);
         //    std::cout << "  REP : " << ba.input_filters << "->" << ba.output_filters
-          //            << ", " << imgsize_w << "x" << imgsize_h << std::endl;
+        //              << ", " << imgsize_w << "x" << imgsize_h << std::endl;
 
             register_module("mbconvblk_" + std::to_string(blkno) + "_" + std::to_string(i), *blk_rep);
             _blocks.push_back(blk_rep);
@@ -259,7 +261,7 @@ EfficientNetV1Impl::EfficientNetV1Impl(const EfficientNetOptions& params, size_t
 // Calls extract_features to extract features, applies final linear layer, and returns logits.
 torch::Tensor EfficientNetV1Impl::forward(torch::Tensor inputs)
 {
-
+    
     auto bs = inputs.size(0);
     auto x = extract_features(inputs);
     x = _avg_pooling->forward(x);

@@ -4,6 +4,7 @@
 #include <torch/nn/module.h>
 #include <torch/optim/optimizer.h>
 #include <torch/types.h>
+#include "torchvision/macros.h"  // VISION_API
 
 #include <cstddef>
 #include <utility>
@@ -36,7 +37,7 @@ struct  SGDAGCOptions
     TORCH_ARG(double, eps) = 1e-5;
 #endif
 
-    struct  SGDAGCOptions : public OptimizerCloneableOptions<SGDAGCOptions> {
+    struct VISION_API SGDAGCOptions : public OptimizerCloneableOptions<SGDAGCOptions> {
         SGDAGCOptions(double lr);
         TORCH_ARG(double, lr);
         TORCH_ARG(double, momentum) = 0;
@@ -59,7 +60,7 @@ struct  SGDAGCOptions
  * Implementation based of `PyTorch implementation of Normalizer-Free Networks and Adaptive Gradient Clipping`.
  * @link https://github.com/vballoli/nfnets-pytorch @endlink
  */
-class  SGDAGC : public Optimizer
+class VISION_API SGDAGC : public Optimizer
 
 {
 public:

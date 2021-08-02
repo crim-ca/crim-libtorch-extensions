@@ -146,6 +146,8 @@ public:
 
     /// Returns the sample image and label as {torch::Tensor, torch::Tensor}
     torch::data::Example<> get(size_t index) override {
+       
+
         LOGGER(VERBOSE) << "Process image " << index << "..." << std::endl;
         /*torch::Tensor sample_img = states.at(index);*/
         std::string img_path = images.at(index);
@@ -206,53 +208,57 @@ void train(
         float mse = 0;
         float acc = 0.0;
         float valid_acc = 0.0;
-
         size_t train_batch_index = 0;
         size_t valid_batch_index = 0;
         size_t train_batch_cumul = 0;
         size_t valid_batch_cumul = 0;
+        try {
+            for (auto& batch : *data_loader_train) {
+                auto batch_size = batch.data.size(0);
+                train_batch_cumul += batch_size;
+                LOGGER(DEBUG)
+                    << "[train] epoch " << epoch << " batch " << train_batch_index
+                    << " (" << train_batch_cumul << "/" << train_size << ", " 
+                    << 100.0*static_cast<float>(train_batch_cumul) / static_cast<float>(train_size) << "%)" << std::endl;
 
-        for(auto& batch: *data_loader_train) {
-            auto batch_size = batch.data.size(0);
-            train_batch_cumul += batch_size;
-            LOGGER(DEBUG)
-                << "[train] epoch " << epoch << " batch " << train_batch_index
-                << " (" << train_batch_cumul << "/" << train_size << ", "
-                << static_cast<float>(train_batch_cumul) / static_cast<float>(train_size) << "%)" << std::endl;
-            auto data = batch.data;
-            auto target = batch.target.squeeze();
+                auto data = batch.data;
+                auto target = batch.target.squeeze();
 
-            // Should be of length: batch_size
-            data = data.to(torch::kF32).to(torch::kCUDA);
-            target = target.to(torch::kInt64).to(torch::kCUDA);
+                // Should be of length: batch_size
+                data = data.to(torch::kF32).to(torch::kCUDA);
+                target = target.to(torch::kInt64).to(torch::kCUDA);
 
-            //std::vector<torch::jit::IValue> input;
-            //input.push_back(data);
-            optimizer->zero_grad();
-            #ifdef USE_BASE_MODEL
-            auto output = net->forward(data);
-            #else
-            auto output = net.forward(data);
-            #endif
+                //std::vector<torch::jit::IValue> input;
+                //input.push_back(data);
+                optimizer->zero_grad();
+                #ifdef USE_BASE_MODEL
+                auto output = net->forward(data);
+                #else
+                auto output = net.forward(data);
+                #endif
 
-            // For transfer learning
-            output = output.view({output.size(0), -1});
-            /*
-            LOGGER(DEBUG) << output <<std::endl;
-            output = lin(output);
-            */
+                // For transfer learning
+                output = output.view({ output.size(0), -1 });
+                /*
+                outlog << output <<std::endl;
+                output = lin(output);
+                */
 
-            auto loss = torch::nll_loss(torch::log_softmax(output, 1), target);
+                auto loss = torch::nll_loss(torch::log_softmax(output, 1), target);
 
-            loss.backward();
-            optimizer->step();
+                loss.backward();
+                optimizer->step();
 
-            auto pred = output.argmax(1).eq(target).sum();
+                auto pred = output.argmax(1).eq(target).sum();
 
-            acc += pred.template item<float>();
-            mse += loss.template item<float>();
+                acc += pred.template item<float>();
+                mse += loss.template item<float>();
 
-            train_batch_index += 1;
+                train_batch_index += 1;
+            }
+        }
+        catch (std::exception& e) {
+            std::cout << e.what() << std::endl;
         }
 
         for (auto& batch : *data_loader_valid) {
@@ -261,7 +267,7 @@ void train(
             LOGGER(DEBUG)
                 << "[valid] epoch " << epoch << " batch " << valid_batch_index
                 << " (" << valid_batch_cumul << "/" << valid_size << ", "
-                << static_cast<float>(valid_batch_cumul) / static_cast<float>(valid_size) << "%)" << std::endl;
+                << 100.0*static_cast<float>(valid_batch_cumul) / static_cast<float>(valid_size) << "%)" << std::endl;
             auto data = batch.data;
             auto target = batch.target.squeeze();
 
@@ -281,10 +287,10 @@ void train(
 
 
         mse = mse/float(train_batch_index); // Take mean of loss
-        LOGGER(INFO)
+        LOGGER(INFO) << std::setprecision(3)
             << "Epoch: " << epoch  << ", " << "MSE: " << mse << ", training accuracy: "
             << acc / train_size << ", validation accuracy: " << valid_acc / valid_size << std::endl;
-        LOGGER(INFO) << "** " << mse << " " << acc / train_size << " " << valid_acc / valid_size << std::endl;
+        LOGGER(INFO) << "** " << mse << " " << acc/train_size  << " " << valid_acc/valid_size  << std::endl;
 
         /*test(net, data_loader, dataset_size, lin);*/
 

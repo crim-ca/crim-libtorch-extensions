@@ -1,3 +1,5 @@
+
+#include <stdafx.h>
 // From https://github.com/pytorch/examples/blob/master/cpp/transfer-learning/main.cpp
 #include <memory>
 #include <algorithm>

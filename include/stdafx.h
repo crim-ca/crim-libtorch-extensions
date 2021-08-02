@@ -8,7 +8,7 @@
     #define NOMINMAX // inhibit min and max defines
     #endif/*NOMINMAX*/
 
-    #ifndef
+    #ifndef TYPENAME
     #define TYPENAME typename // used in some cases where compilers disagree on 'typename' usage
     #endif
 
