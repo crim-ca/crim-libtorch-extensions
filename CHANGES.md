@@ -4,7 +4,24 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Data
+  - Remove deform condition to avoid `rect` definition smaller than expected.
+  - Add data normalization of Tensors against ImageNet default mean and standard deviation values.
+
+* Modules
+  - Reinsert missing calls to some layers' forward functions in `EfficientNet`.
+
+* CLI
+  - Add normalization, try/catch to training loop.
+  - Lower per-sample logging operations of reading/transform/tensor creation to `VERBOSE`
+    to provide batch/epoch-only logging using `DEBUG` level.
+
+* Fixes
+  - Add `VISION_API` defines for symbol export (support Windows DLL).
+  - Add missing header (SGD).
+  - Fix missing initializations.
+  - Remove problematic `using` directive.
+  - Comment out useless code outputs.
 
 [0.3.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.3.0) (2021-07-15)
 ------------------------------------------------------------------------------------------------------------------------
