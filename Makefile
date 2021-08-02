@@ -83,7 +83,7 @@ INSTALL_DIR ?= $(APP_ROOT)/install
 ifeq ($(INSTALL_DIR),)
   INSTALL_DIR := $(APP_ROOT)/install
 endif
-PYTHON_EXECUTABLE ?= $(shell realpath $${PYTHON_EXECUTABLE} || which python)
+PYTHON_EXECUTABLE ?= $(shell realpath $${PYTHON_EXECUTABLE} 2>/dev/null || which python)
 ifeq ($(PYTHON_ROOT_DIR),)
   PYTHON_ROOT_DIR := $(shell dirname $(PYTHON_EXECUTABLE))
   PYTHON_ROOT_DIR := $(shell dirname $(PYTHON_ROOT_DIR))
@@ -317,9 +317,17 @@ ifeq ($(findstring bump, $(MAKECMDGOALS)),)
 	$(error Target 'dry' must be combined with a 'bump' target)
 endif
 
-.PHONY: bump
-bump:	## bump version using VERSION specified as user input (make VERSION=<X.Y.Z> bump)
-	@$(ECHO) "$(_INFO)Updating package version..."
-	@[ "${VERSION}" ] || ( $(ECHO) "$(_ERROR) 'VERSION' is not set"; exit 1 )
+.PHONY: _bump_install
+_bump_install:
 	@-bash -c '$(CONDA_CMD) test -f "$(CONDA_ENV_PATH)/bin/bump2version" || pip install $(PIP_XARGS) bump2version'
+
+.PHONY: bump
+bump: _bump_install	## bump version using VERSION specified as user input (make VERSION=<X.Y.Z> bump)
+	@$(ECHO) "$(_INFO)Updating version..."
+	@[ "${VERSION}" ] || ( $(ECHO) "$(_ERROR) 'VERSION' is not set"; exit 1 )
 	@-bash -c '$(CONDA_CMD) bump2version $(BUMP_XARGS) --new-version "${VERSION}" patch;'
+
+.PHONY: version
+version: _bump_install ## display the current version of the application
+	@$(ECHO) -n "$(_INFO)Current version: "
+	@-bump2version --allow-dirty --list --dry-run patch | grep current_version | cut -d '=' -f 2
