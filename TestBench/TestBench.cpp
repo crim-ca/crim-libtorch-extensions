@@ -12,6 +12,7 @@
 #include "torchvision/models/resnet.h"
 #include "opencv2/opencv.hpp"
 #include "opencv2/imgcodecs.hpp"
+#include <opencv2/core/utils/filesystem.hpp>
 
 #include "data/DataAugmentation.h"
 #include "nn/models/EfficientNet.h"
@@ -116,6 +117,12 @@ int main(int argc, const char* argv[]) {
             ->default_val(OptimType::SGD)
             ->transform(CLI::CheckedTransformer(OptimMap, CLI::ignore_case));
 
+        std::string ckpt_load_path;
+        app.add_option("-c,--checkpoint", ckpt_load_path);
+        std::string ckpt_save_path = "./checkpoints";
+        app.add_option("-o,--output", ckpt_save_path, "Save location of intermediate epoch model checkpoints.")
+            ->default_val(ckpt_save_path);
+
         std::string dataset_folder_train, dataset_folder_valid;
         std::string data_file_extension = "jpeg";
         std::string log_file_path;
@@ -204,6 +211,20 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
+        if (!ckpt_load_path.empty()) {
+            std::ifstream ckpt(ckpt_load_path.c_str());
+            if (!ckpt.good()) {
+                LOGGER(ERROR) << "Specified checkpoint file does not exist: [" << ckpt_load_path << "]" << std::endl;
+                return EXIT_FAILURE;
+            }
+            LOGGER(INFO) << "Will attempt loading model checkpoint from file: [" << ckpt_load_path << "]" << std::endl;
+        }
+        ckpt_save_path = cv::utils::fs::canonical(ckpt_save_path);
+        if (!cv::utils::fs::isDirectory(ckpt_save_path)) {
+            cv::utils::fs::createDirectory(ckpt_save_path);
+        }
+        LOGGER(DEBUG) << "Will save epoch checkpoints in [" << ckpt_save_path << "]" << std::endl;
+
         LOGGER(INFO) << "Loading samples..." << std::endl;
 
         // Get paths of images and labels from the folder paths
@@ -260,18 +281,22 @@ int main(int argc, const char* argv[]) {
                     //pNet = vision::models::ResNet34(nb_class);
                     auto p = std::make_shared<ResNet34CLI>(nb_class);
                     #ifdef USE_BASE_MODEL
-                    auto net = p.get();
+                        auto net = p.get();
                     #else
-                    auto net = p;
+                        auto net = p;
+                        if (!ckpt_load_path.empty())
+                            torch::load(p, ckpt_load_path);
                     #endif
+
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
                     LOGGER(INFO) << "Using ResNet34" << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
+
                     #ifdef USE_BASE_MODEL
-                    pNet = std::dynamic_pointer_cast<IModel>(p);
+                        pNet = std::dynamic_pointer_cast<IModel>(p);
                     #else
-                    pNet = p;
+                        pNet = p;
                     #endif
                     //pNet = torch::nn::AnyModule(ResNet34(nb_class));
                 }
@@ -281,18 +306,22 @@ int main(int argc, const char* argv[]) {
                     //pNet = std::make_shared<EfficientNetV1>(EfficientNetOptions{ 1.0, 1.0, 224, 0.2 }, nb_class);
                     auto p = std::make_shared<EfficientNetB0CLI>(nb_class);
                     #ifdef USE_BASE_MODEL
-                    auto net = p.get();
+                        auto net = p.get();
                     #else
-                    auto net = p;
+                        auto net = p;
+                        if (!ckpt_load_path.empty())
+                            torch::load(p, ckpt_load_path);
                     #endif
+
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
                     LOGGER(INFO) << "Using EfficientNetB0" << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
+
                     #ifdef USE_BASE_MODEL
-                    pNet = std::dynamic_pointer_cast<IModel>(p);
+                        pNet = std::dynamic_pointer_cast<IModel>(p);
                     #else
-                    pNet = p;
+                        pNet = p;
                     #endif
                     //pNet = torch::nn::AnyModule(EfficientNetB0(nb_class));
                 }
@@ -302,18 +331,22 @@ int main(int argc, const char* argv[]) {
                     //pNet = std::make_shared<NFNet34>(nb_class);
                     auto p = std::make_shared<NFNet34CLI>(nb_class);
                     #ifdef USE_BASE_MODEL
-                    auto net = p.get();
+                        auto net = p.get();
                     #else
-                    auto net = p;
+                        auto net = p;
+                        if (!ckpt_load_path.empty())
+                            torch::load(p, ckpt_load_path);
                     #endif
+
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
                     LOGGER(INFO) << "Using NFNet34" << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
+
                     #ifdef USE_BASE_MODEL
-                    pNet = std::dynamic_pointer_cast<IModel>(p);
+                        pNet = std::dynamic_pointer_cast<IModel>(p);
                     #else
-                    pNet = p;
+                        pNet = p;
                     #endif
                     //pNet = torch::nn::AnyModule(NFNet34(nb_class));
                 }
@@ -323,6 +356,15 @@ int main(int argc, const char* argv[]) {
         params = model->parameters();
         if (has_cuda) model->to(torch::kCUDA);
         LOGGER(DEBUG) << *model;*/
+
+        /*if (!ckpt_load_path.empty()) {
+            LOGGER(INFO) << "Loading model checkpoint..." << std::endl;
+            #ifdef USE_BASE_MODEL
+            #error Not Implemented checkpoint loading with USE_BASE_MODEL
+            #else
+            torch::load(std::shared_ptr<torch::nn::Module>(pNet.ptr()), ckpt_load_path);
+            #endif
+        }*/
 
         std::shared_ptr<torch::optim::Optimizer> pOptim;
 
@@ -370,7 +412,7 @@ int main(int argc, const char* argv[]) {
         show_gpu_memory();
 
         LOGGER(INFO) << "Starting train/valid loop..." << std::endl;
-        train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size, max_epochs);
+        train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size, max_epochs, ckpt_save_path);
 
         auto end_time = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed_seconds = end_time - start_time;

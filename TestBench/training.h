@@ -9,6 +9,8 @@
 #endif
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/utils/filesystem.hpp>
+
 #include <torch/torch.h>
 #include <torch/script.h>
 
@@ -146,7 +148,7 @@ public:
 
     /// Returns the sample image and label as {torch::Tensor, torch::Tensor}
     torch::data::Example<> get(size_t index) override {
-       
+
 
         LOGGER(VERBOSE) << "Process image " << index << "..." << std::endl;
         /*torch::Tensor sample_img = states.at(index);*/
@@ -196,9 +198,11 @@ void train(
     std::shared_ptr<torch::optim::Optimizer> optimizer,
     size_t train_size,
     size_t valid_size,
-    size_t max_epochs = 2
+    size_t max_epochs = 2,
+    std::string checkpoint_dir = "."
 ) {
-    float best_accuracy = 0.0;
+    float best_acc = 0.0;
+    size_t best_epoch = 0;
 
     LOGGER(DEBUG) << "Training set size:   " << train_size << std::endl;
     LOGGER(DEBUG) << "Validation set size: " << valid_size << std::endl;
@@ -207,7 +211,7 @@ void train(
         LOGGER(INFO) << "[train] epoch " << epoch << std::endl;
         float mse = 0;
         float acc = 0.0;
-        float valid_acc = 0.0;
+        float valid_acc = 0.0, train_acc = 0.0;
         size_t train_batch_index = 0;
         size_t valid_batch_index = 0;
         size_t train_batch_cumul = 0;
@@ -218,7 +222,8 @@ void train(
                 train_batch_cumul += batch_size;
                 LOGGER(DEBUG)
                     << "[train] epoch " << epoch << " batch " << train_batch_index
-                    << " (" << train_batch_cumul << "/" << train_size << ", " 
+                    << " (" << train_batch_cumul << "/" << train_size << ", "
+                    << std::setprecision(3) << std::fixed
                     << 100.0*static_cast<float>(train_batch_cumul) / static_cast<float>(train_size) << "%)" << std::endl;
 
                 auto data = batch.data;
@@ -267,6 +272,7 @@ void train(
             LOGGER(DEBUG)
                 << "[valid] epoch " << epoch << " batch " << valid_batch_index
                 << " (" << valid_batch_cumul << "/" << valid_size << ", "
+                << std::setprecision(3) << std::fixed
                 << 100.0*static_cast<float>(valid_batch_cumul) / static_cast<float>(valid_size) << "%)" << std::endl;
             auto data = batch.data;
             auto target = batch.target.squeeze();
@@ -287,18 +293,31 @@ void train(
 
 
         mse = mse/float(train_batch_index); // Take mean of loss
+        train_acc = acc / train_size;
+        valid_acc = valid_acc / valid_size;
         LOGGER(INFO) << std::setprecision(3)
             << "Epoch: " << epoch  << ", " << "MSE: " << mse << ", training accuracy: "
-            << acc / train_size << ", validation accuracy: " << valid_acc / valid_size << std::endl;
-        LOGGER(INFO) << "** " << mse << " " << acc/train_size  << " " << valid_acc/valid_size  << std::endl;
+            << train_acc << ", validation accuracy: " << valid_acc << std::endl;
+        LOGGER(INFO) << "** " << mse << " " << train_acc  << " " << valid_acc  << std::endl;
 
         /*test(net, data_loader, dataset_size, lin);*/
 
-        if(valid_acc/valid_size > best_accuracy) {
-            best_accuracy = valid_acc/valid_size;
-            LOGGER(DEBUG) << "Saving model [not implemented!]" << std::endl;
-            ///net.get().save("model.pt");   need a cast?
-            //torch::save(lin, "model_linear.pt");
+        LOGGER(INFO) << "Saving model checkpoint (epoch " << epoch << ")" << std::endl;
+        std::string ckpt_path = cv::utils::fs::join(checkpoint_dir, "model-epoch-" + std::to_string(epoch) + ".pt");
+        torch::save(net.ptr(), ckpt_path);
+
+        if (valid_acc > best_acc) {
+            if (epoch != 0) {
+                LOGGER(INFO) << "Updating new best model checkpoint: (epoch "
+                    << best_epoch << ": " << std::setprecision(1) << std::fixed << best_acc << "%) -> (epoch "
+                    << epoch << ": " << std::setprecision(1) << std::fixed << valid_acc << "%)" << std::endl;
+            }
+            best_epoch = epoch;
+            best_acc = valid_acc;
+            std::string ckpt_best = cv::utils::fs::join(checkpoint_dir, "model-best.pt");
+            std::ifstream src(ckpt_path, std::ios::binary);
+            std::ofstream dst(ckpt_best, std::ios::binary);
+            dst << src.rdbuf();
         }
     }
 }
