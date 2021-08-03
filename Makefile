@@ -115,7 +115,7 @@ BUILD_CONFIG_VARS := \
 	CLI11_DIR \
 	PLOG_DIR
 
-# demo config
+# demo config (use 'test-bench-help' target for all option details)
 # use by default known ImageNet location/data type
 DEMO_DATA_ROOT_DIR 	?= /misc/data20/visi/imagenet
 DEMO_DATA_EXT 		?= jpeg
@@ -124,7 +124,9 @@ DEMO_OPTIM 			?= SGD
 DEMO_MAX_EPOCHS 	?= 30
 DEMO_BATCH_SIZE 	?= 16
 DEMO_WORKERS		?= -1
-DEMO_LOG_LEVEL		?= verbose
+DEMO_LOG_LEVEL		?= debug
+DEMO_LOG_FILE       ?= $(APP_ROOT)/TestBench.log
+DEMO_XARGS          ?=
 DEMO_CONFIG_VARS := \
 	DEMO_DATA_ROOT_DIR \
 	DEMO_DATA_EXT \
@@ -133,7 +135,9 @@ DEMO_CONFIG_VARS := \
 	DEMO_MAX_EPOCHS \
 	DEMO_BATCH_SIZE \
 	DEMO_WORKERS \
-	DEMO_LOG_LEVEL
+	DEMO_LOG_LEVEL \
+	DEMO_LOG_FILE \
+	DEMO_XARGS
 
 ### --- Information targets --- ###
 
@@ -299,8 +303,9 @@ test-bench-demo: build  ## call the TestBench application with demo parameters (
 		--batch-size $(DEMO_BATCH_SIZE) \
 		--workers $(DEMO_WORKERS) \
 		--extension $(DEMO_DATA_EXT) \
-		--$(DEMO_LOG_LEVEL)
-#| tee $(APP_ROOT)/TestBench.log
+		--logfile "$(DEMO_LOG_FILE)" \
+		--$(DEMO_LOG_LEVEL) \
+		$(DEMO_XARGS)
 
 ### --- Versioning targets --- ###
 
