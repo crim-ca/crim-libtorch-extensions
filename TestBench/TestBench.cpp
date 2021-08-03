@@ -118,10 +118,10 @@ int main(int argc, const char* argv[]) {
             ->transform(CLI::CheckedTransformer(OptimMap, CLI::ignore_case));
 
         std::string ckpt_load_path;
-        app.add_option("-c,--checkpoint", ckpt_load_path);
-        std::string ckpt_save_path = "./checkpoints";
-        app.add_option("-o,--output", ckpt_save_path, "Save location of intermediate epoch model checkpoints.")
-            ->default_val(ckpt_save_path);
+        app.add_option("-c,--checkpoint", ckpt_load_path, "Model checkpoint to load (must match architecture).");
+        std::string ckpt_save_path;
+        app.add_option("-s,--save-dir", ckpt_save_path, "Save location of intermediate epoch model checkpoints.")
+            ->default_val("./checkpoints");
 
         std::string dataset_folder_train, dataset_folder_valid;
         std::string data_file_extension = "jpeg";
