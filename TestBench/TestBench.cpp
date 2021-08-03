@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <vector>
 #include <fstream>
+#include <iomanip>
 
 #include "CLI/CLI.hpp"
 #include <torch/torch.h>
@@ -126,38 +127,74 @@ int main(int argc, const char* argv[]) {
         std::string dataset_folder_train, dataset_folder_valid;
         std::string data_file_extension = "jpeg";
         std::string log_file_path;
-        double lr{ 0.001 };
-        double clipping{ 0.01 };
+        double lr{ 1e-3 };   // only param that is mandatory to initialize options
+        double clipping{ -1.0 }, dampening{ -1.0 }, momentum{ -1.0 }, epsilon{ -1.0 };
+        std::tuple<double, double> betas{ -1, -1 };
+        bool nesterov, amsgrad;
         size_t batch_size = 16;
         size_t max_epochs = 30;
+        int max_batch_train = -1;
+        int max_batch_valid = -1;
+        int early_stop_train_batch = -1;
+        int early_stop_valid_batch = -1;
         int workers = -1;  // allow undefined
         bool debug{ false };
         bool verbose{ false };
         bool version{ false };
-        bool no_color{ false };
+        bool log_color{ true };
 
-        app.add_option("--train", dataset_folder_train,
+        auto train_opts = app.add_option_group("Training Parameters",
+            "Parameters that define behavior of training iterations and data loading.");
+        train_opts.add_option("--train", dataset_folder_train,
             "Directory where training images categorized by class sub-folders can be loaded from."
         );
-        app.add_option("--valid", dataset_folder_valid,
+        train_opts.add_option("--valid", dataset_folder_valid,
             "Directory where validation images categorized by class sub-folders can be loaded from."
         );
-        app.add_option("-e,--extension", data_file_extension,
+        train_opts.add_option("-e,--extension", data_file_extension,
             "Extension of image files to be considered for loading data."
         )->default_val(data_file_extension);
+        train_opts.add_option("--max-batch-train", max_batch_train,
+            "Early stop training step batch iteration when reaching this maximum index (based on batch size). " +
+            "Consume all available training batch samples otherwise (default)."
+        )->default_val(max_batch_train);
+        train_opts.add_option("--max-batch-valid", max_batch_valid,
+            "Early stop validation step batch iteration when reaching this maximum index (based on batch size). " +
+            "Consume all available training batch samples otherwise (default)."
+        )->default_val(max_batch_valid);
+        train_opts.add_option("-E,--max-epochs", max_epochs, "Maximum number of training epochs.")->default_val(max_epochs);
+        train_opts.add_option("-B,--batch-size", batch_size, "Batch size of each iteration.")->default_val(batch_size);
+        train_opts.add_option("-W,--workers", workers, "Number of data loader workers to employ.")->default_val(workers);
 
-        app.add_option("-E,--max-epochs", max_epochs, "Maximum number of training epochs.")->default_val(max_epochs);
-        app.add_option("-B,--batch-size", batch_size, "Batch size of each iteration.")->default_val(batch_size);
-        app.add_option("-W,--workers", workers, "Number of data loader workers to employ.")->default_val(workers);
-        CLI::Option* lr_opt = app.add_option("--lr", lr, "Learning rate")->default_val(lr);
-        CLI::Option* clipping_opt = app.add_option("--clipping", clipping, "Clipping threshold")->default_val(clipping);
+        // because many different optimizers use the same hyperparameter names for different purposes / defaults,
+        // don't define any default here and use CLI option to detect if specific OptimizerOption default must be used
+        auto optim_opts = app.add_option_group("Optimizer Hyperparameters",
+            "Hyperparameters values employed by the selected optimizer. " +
+            "Omitted options use PyTorch defaults. Not applicable options for selected optimizer are ignored.");
+        CLI::Option* lr_opt = optim_opts.add_option("--lr", lr, "Learning rate");
+        CLI::Option* eps_opt = optim_opts.add_option("--epsilon", epsilon, "Epsilon");
+        CLI::Option* clipping_opt = optim_opts.add_option("--clipping", clipping, "Clipping lambda threshold");
+        CLI::Option* momentum_opt = optim_opts.add_option("--momentum", clipping, "Momentum");
+        CLI::Option* dampening_opt = optim_opts.add_option("--dampening", clipping, "Dampening");
+        CLI::Option* nesterov_opt = optim_opts.add_option("--nesterov", nesterov, "Nesterov");
+        CLI::Option* betas_opt = optim_opts.add_option("--betas", betas,
+            "Beta1 and Beta2 (both requried if option is specified, separated by space)."
+        )->expected(2);
 
-        app.add_option("-l,--logfile", log_file_path, "Output log path.");
-        app.add_flag("-d,--debug", debug, "Log additional debug messages.")->default_val(debug);
-        app.add_flag("-v,--verbose", verbose,
+        #ifndef USE_LOG_COUT
+
+        auto log_opts = app.add_option_group("Logging Parameters", "Control logging options.");
+        log_opts.add_flag("-v,--verbose", verbose,
             "Log more verbose messages including function and lines numbers."
         )->default_val(verbose);
-        app.add_flag("--no-color", no_color, "Disable color formatting of log entries.")->default_val(no_color);
+        log_opts.add_flag("-d,--debug", debug, "Log additional debug messages.")->default_val(debug);
+        log_opts.add_option("-l,--logfile", log_file_path, "Output log path.");
+        log_opts.add_flag("--color,!--no-color", log_color,
+            "Enable/disable color formatting of log entries."
+        )->default_val(log_color);
+
+        #endif // USE_LOG_COUT
+
         app.add_flag("-V,--version", version, "Print the version number.");
 
         CLI11_PARSE(app, argc, argv);
@@ -166,6 +203,7 @@ int main(int argc, const char* argv[]) {
         auto start_time = std::chrono::steady_clock::now();
 
         if (version) {
+            // cout to force output regardless of log level / log utility
             std::cout << std::string(CRIM_TORCH_EXTENSIONS_VERSION) << std::endl;
             return EXIT_SUCCESS;
         }
@@ -179,32 +217,33 @@ int main(int argc, const char* argv[]) {
                 static plog::ColorConsoleAppender<plog::VerboseFormatter> colorConsoleAppender;
                 static plog::RollingFileAppender<plog::VerboseFormatter> fileAppender(log_file_path.c_str());
                 if (withFile)
-                    plog::init(level, no_color ? &consoleAppender : &colorConsoleAppender).addAppender(&fileAppender);
+                    plog::init(level, log_color ? &colorConsoleAppender : &consoleAppender).addAppender(&fileAppender);
                 else
-                    plog::init(level, no_color ? &consoleAppender : &colorConsoleAppender);
+                    plog::init(level, log_color ? &colorConsoleAppender : &consoleAppender);
             }
             else {
                 static plog::ConsoleAppender<plog::MinimalFormatter> consoleAppender;
                 static plog::ColorConsoleAppender<plog::MinimalFormatter> colorConsoleAppender;
                 static plog::RollingFileAppender<plog::MinimalFormatter> fileAppender(log_file_path.c_str());
                 if (withFile)
-                    plog::init(level, no_color ? &consoleAppender : &colorConsoleAppender).addAppender(&fileAppender);
+                    plog::init(level, log_color ? &colorConsoleAppender : &consoleAppender).addAppender(&fileAppender);
                 else
-                    plog::init(level, no_color ? &consoleAppender : &colorConsoleAppender);
+                    plog::init(level, log_color ? &colorConsoleAppender : &consoleAppender);
             }
 
         #endif // USE_LOG_COUT
 
+        uint w = 20;
+        std::string sep = ": ", tab = "  ";
+        LOGGER(INFO) << "Options" << std::endl
+            << tab << std::setw(w) << std::left << "Workers" << sep << (workers < 0 ? -1 : workers) << std::endl
+            << tab << std::setw(w) << std::left << "Batch Size" << sep << batch_size << std::endl
+            << tab << std::setw(w) << std::left << "Max Epochs" << sep << max_epochs << std::endl;
+
         bool has_cuda = torch::cuda::is_available();
-        if (verbose) {
-            if(lr_opt->count() > 0)
-                LOGGER(DEBUG) << "Learning rate = " << lr << std::endl;
-            if(clipping_opt->count()>0)
-                LOGGER(DEBUG) << "Lambda = " << clipping << std::endl;
-            LOGGER(INFO) << (has_cuda ? "CUDA detected!" : "CUDA missing! Will use CPU.") << std::endl;
-            if (has_cuda)
-                show_gpu_properties();
-        }
+        LOGGER(INFO) << (has_cuda ? "CUDA detected!" : "CUDA missing! Will use CPU.") << std::endl;
+        if (has_cuda)
+            show_gpu_properties();
 
         if (dataset_folder_train.empty() || dataset_folder_valid.empty()) {
             LOGGER(ERROR) << "Invalid directories for train/valid datasets provided no data!" << std::endl;
@@ -290,7 +329,7 @@ int main(int argc, const char* argv[]) {
 
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
-                    LOGGER(INFO) << "Using ResNet34" << std::endl;
+                    LOGGER(INFO) << "Using ResNet34 model" << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
 
                     #ifdef USE_BASE_MODEL
@@ -315,7 +354,7 @@ int main(int argc, const char* argv[]) {
 
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
-                    LOGGER(INFO) << "Using EfficientNetB0" << std::endl;
+                    LOGGER(INFO) << "Using EfficientNetB0 model" << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
 
                     #ifdef USE_BASE_MODEL
@@ -340,7 +379,7 @@ int main(int argc, const char* argv[]) {
 
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
-                    LOGGER(INFO) << "Using NFNet34" << std::endl;
+                    LOGGER(INFO) << "Using NFNet34 model" << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
 
                     #ifdef USE_BASE_MODEL
@@ -369,17 +408,57 @@ int main(int argc, const char* argv[]) {
         std::shared_ptr<torch::optim::Optimizer> pOptim;
 
         switch (optimtype) {
-            case OptimType::Adam:
-                LOGGER(INFO) << "Using Adam" << std::endl;
-                pOptim = std::make_shared<torch::optim::Adam>(params, torch::optim::AdamOptions(lr));
+            case OptimType::Adam: {
+                    auto opt = torch::optim::AdamOptions(lr);
+                    opt.lr = (lr_opt->count() ? lr : opt.lr);
+                    opt.betas = (betas_opt->count() ? betas : opt.betas);
+                    opt.eps = (epsilon_opt->count() ? epsilon : opt.epsilon);
+                    opt.amsgrad = (amsgrad_opt->count() ? amsgrad : opt.amsgrad);
+                    LOGGER(INFO) << "Using Adam optimizer" << std::endl
+                        << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr << std::endl
+                        << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay << std::endl
+                        << tab << std::setw(w) << std::left << "Betas" << sep
+                            << std::get<0>(opt.betas) << ", " << std::get<1>(opt.betas) << std::endl
+                        << tab << std::setw(w) << std::left << "Epsilon" << sep << opt.eps << std::endl
+                        << tab << std::setw(w) << std::left << "AMSGrad" << sep << opt.amsgrad << std::endl;
+                    pOptim = std::make_shared<torch::optim::Adam>(params, opt);
+                }
                 break;
-            case OptimType::SGD:
-                LOGGER(INFO) << "Using SGD" << std::endl;
-                pOptim = std::make_shared<torch::optim::SGD>(params, torch::optim::SGDOptions(lr));
+            case OptimType::SGD: {
+                    auto opt = torch::optim::SGDOptions(lr);
+                    opt.lr = (lr_opt->count() ? lr : opt.lr);
+                    opt.nesterov = (weight_decay_opt->count() ? weight_decay : opt.weight_decay);
+                    opt.momentum = (momentum_opt->count() ? momentum : opt.momentum);
+                    opt.dampening = (dampening_opt->count() ? dampening : opt.dampening);
+                    opt.nesterov = (nesterov_opt->count() ? nesterov : opt.nesterov);
+                    LOGGER(INFO) << "Using SGD optimizer" << std::endl
+                        << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr << std::endl
+                        << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay << std::endl
+                        << tab << std::setw(w) << std::left << "Momentum" << sep << opt.momentum << std::endl
+                        << tab << std::setw(w) << std::left << "Dampening" << sep << opt.dampening << std::endl
+                        << tab << std::setw(w) << std::left << "Nesterov" << sep << opt.nesterov << std::endl;
+                    pOptim = std::make_shared<torch::optim::SGD>(params, opt);
+                }
                 break;
-            case OptimType::SGDAGC:
-                LOGGER(INFO) << "Using SGDAGC" << std::endl;
-                pOptim = std::make_shared<torch::optim::SGDAGC>(params, torch::optim::SGDAGCOptions(lr));
+            case OptimType::SGDAGC: {
+                    auto opt = torch::optim::SGDAGCOptions(lr);
+                    opt.lr = (lr_opt->count() ? lr : opt.lr);
+                    opt.nesterov = (weight_decay_opt->count() ? weight_decay : opt.weight_decay);
+                    opt.momentum = (momentum_opt->count() ? momentum : opt.momentum);
+                    opt.dampening = (dampening_opt->count() ? dampening : opt.dampening);
+                    opt.nesterov = (nesterov_opt->count() ? nesterov : opt.nesterov);
+                    opt.eps = (epsilon_opt->count() ? epsilon : opt.epsilon);
+                    opt.clipping = (clipping_opt->count() ? clipping : opt.clipping);
+                    LOGGER(INFO) << "Using SGDAGC optimizer" << std::endl
+                        << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr << std::endl
+                        << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay << std::endl
+                        << tab << std::setw(w) << std::left << "Momentum" << sep << opt.momentum << std::endl
+                        << tab << std::setw(w) << std::left << "Dampening" << sep << opt.dampening << std::endl
+                        << tab << std::setw(w) << std::left << "Nesterov" << sep << opt.nesterov << std::endl
+                        << tab << std::setw(w) << std::left << "Epsilon" << sep << opt.eps << std::endl
+                        << tab << std::setw(w) << std::left << "Clipping Lambda" << sep << opt.clipping << std::endl;
+                    pOptim = std::make_shared<torch::optim::SGDAGC>(params, opt));
+                }
                 break;
         }
 
@@ -412,7 +491,8 @@ int main(int argc, const char* argv[]) {
         show_gpu_memory();
 
         LOGGER(INFO) << "Starting train/valid loop..." << std::endl;
-        train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size, max_epochs, ckpt_save_path);
+        train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size,
+              max_epochs, max_batch_train, max_batch_valid, ckpt_save_path);
 
         auto end_time = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed_seconds = end_time - start_time;

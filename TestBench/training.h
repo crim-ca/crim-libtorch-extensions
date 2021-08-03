@@ -172,14 +172,17 @@ public:
  *
  * @tparam Dataloader   Type of data loader employed by the training operation. Derived from Torch Sampler.
  *
- * @param net                   Pre-trained model without last FC layer
- * @param lin                   Last FC layer with revised output features count depending on the number of classes
- * @param data_loader_train     Training sample set data loader
- * @param data_loader_train     Validation sample set data loader
- * @param optimizer             Optimizer to use (e.g.: Adam, SGD, etc.)
- * @param train_size            Size of training dataset
- * @param valid_size            Size of validation dataset
- * @param max_epochs            Maximum number of training epochs
+ * @param net                       Pre-trained model without last FC layer
+ * @param lin                       Last FC layer with revised output features count depending on the number of classes
+ * @param data_loader_train         Training sample set data loader
+ * @param data_loader_train         Validation sample set data loader
+ * @param optimizer                 Optimizer to use (e.g.: Adam, SGD, etc.)
+ * @param train_size                Size of training dataset
+ * @param valid_size                Size of validation dataset
+ * @param max_epochs                Maximum number of training epochs
+ * @param early_stop_train_batch    Force early stop of training batch iterations when reaching index (default: all otherwise).
+ * @param early_stop_valid_batch    Force early stop of validation batch iterations when reaching index (default: all otherwise).
+ * @param checkpoint_dir            Directory where to save intermediate model checkpoints after each epoch (+ best acc).
  */
 template<typename Dataloader>
 void train(
@@ -199,6 +202,8 @@ void train(
     size_t train_size,
     size_t valid_size,
     size_t max_epochs = 2,
+    int early_stop_train_batch = -1,
+    int early_stop_valid_batch = -1,
     std::string checkpoint_dir = "."
 ) {
     float best_acc = 0.0;
@@ -209,6 +214,7 @@ void train(
 
     for(size_t epoch=0; epoch<max_epochs; epoch++) {
         LOGGER(INFO) << "[train] epoch " << epoch << std::endl;
+        bool early_stop_train = false, early_stop_valid = false;
         float mse = 0;
         float acc = 0.0;
         float valid_acc = 0.0, train_acc = 0.0;
@@ -260,6 +266,12 @@ void train(
                 mse += loss.template item<float>();
 
                 train_batch_index += 1;
+
+                if (early_stop_train_batch >= 0 && train_batch_index >= early_stop_train_batch) {
+                    LOGGER(WARN) << "Early stop of training batch itererations (batch: " << train_batch_index << ")" << std::endl;
+                    early_stop_train = true;
+                    break;
+                }
             }
         }
         catch (std::exception& e) {
@@ -267,6 +279,11 @@ void train(
         }
 
         for (auto& batch : *data_loader_valid) {
+            if (early_stop_valid_batch >= 0 && valid_batch_index >= early_stop_valid_batch) {
+                LOGGER(WARN) << "Early stop of validation batch itererations (batch: " << valid_batch_index << ")" << std::endl;
+                break;
+            }
+
             auto batch_size = batch.data.size(0);
             valid_batch_cumul += batch_size;
             LOGGER(DEBUG)
@@ -289,6 +306,14 @@ void train(
             output = output.view({ output.size(0), -1 });
             auto pred = output.argmax(1).eq(target).sum();
             valid_acc += pred.template item<float>();
+
+            valid_batch_index += 1;
+
+            if (early_stop_valid_batch >= 0 && valid_batch_index >= early_stop_valid_batch) {
+                LOGGER(WARN) << "Early stop of validation batch itererations (batch: " << valid_batch_index << ")" << std::endl;
+                early_stop_valid = true;
+                break;
+            }
         }
 
 
@@ -319,6 +344,11 @@ void train(
             std::ofstream dst(ckpt_best, std::ios::binary);
             dst << src.rdbuf();
         }
+
+        if (early_stop_train)
+            data_loader_train->reset();
+        if (early_stop_valid)
+            data_loader_valid->reset();
     }
 }
 
