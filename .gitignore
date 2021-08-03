@@ -14,10 +14,33 @@ install/
 *.so
 *.a
 *.o
+*.dll
+*.exe
+*.lib
 
 ## Test artifcats
 *.log
+*.pth
+*.pt
+
+## Images
+*.jpg
+*.JPG
+*.jpeg
+*.JPEG
+*.png
+*.PNG
+*.tif
+*.TIF
+*.tiff
+*.TIFF
 
 ## External module common locations
 external/
 third[-_]party/
+
+# Common experiment directories
+data*/
+dataset*/
+checkpoint*/
+output*/
