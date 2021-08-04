@@ -311,7 +311,7 @@ int main(int argc, const char* argv[]) {
             nb_total_train = samples_train.first.size();
         }
         if (max_valid_samples != 0 && max_valid_samples < nb_total_train) {
-            samples_valid = random_pick(samples_valid, max_train_samples, seed);
+            samples_valid = random_pick(samples_valid, max_valid_samples, seed);
             nb_class_valid = count_classes(samples_valid.second);
             nb_total_valid = samples_valid.first.size();
         }
