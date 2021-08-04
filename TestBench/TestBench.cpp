@@ -143,17 +143,17 @@ int main(int argc, const char* argv[]) {
         train_opts->add_option("--max-train-samples", max_train_samples,
             "Maximum amount of samples to preserve from available training dataset directory. "
             "Consume all available samples if not specified, 0 or greater than available amount."
-        );
+        )->check(CLI::PositiveNumber);
         train_opts->add_option("--max-valid-samples", max_valid_samples,
             "Maximum amount of samples to preserve from available validation dataset directory. "
             "Consume all available samples if not specified, 0 or greater than available amount."
-        );
+        )->check(CLI::PositiveNumber);
         train_opts->add_option("-E,--max-epochs", max_epochs,
             "Maximum number of training epochs."
-        )->default_val(max_epochs);
+        )->check(CLI::PositiveNumber)->default_val(max_epochs);
         train_opts->add_option("-B,--batch-size", batch_size,
             "Batch size of each iteration."
-        )->default_val(batch_size);
+        )->check(CLI::PositiveNumber)->default_val(batch_size);
         train_opts->add_option("-W,--workers", workers,
             "Number of data loader workers to employ for data loading. "
             "If not specified or negative (default), employ whichever amount available based on CPU count. "
@@ -162,7 +162,7 @@ int main(int argc, const char* argv[]) {
         )->default_val(workers);
         train_opts->add_option("-S,--seed", seed,
             "Seed for initialization of random number generator applied wherever needed."
-        );
+        )->check(CLI::PositiveNumber);
 
         auto model_opts = app.add_option_group("Model Parameters",
             "Parameters relevant for model selection and configuration.");
@@ -171,9 +171,12 @@ int main(int argc, const char* argv[]) {
             ->default_val(arch_type)
             ->transform(CLI::CheckedTransformer(ArchMap, CLI::ignore_case));
         std::string ckpt_load_path, ckpt_save_path;
-        model_opts->add_option("-c,--checkpoint", ckpt_load_path, "Model checkpoint to load (must match architecture).");
-        model_opts->add_option("-s,--save-dir", ckpt_save_path, "Save location of intermediate epoch model checkpoints.")
-            ->default_val("./checkpoints");
+        model_opts->add_option("-c,--checkpoint", ckpt_load_path,
+            "Model checkpoint to load (must match architecture)."
+        )->check(CLI::ExistingFile);
+        model_opts->add_option("-s,--save-dir", ckpt_save_path,
+            "Save location of intermediate epoch model checkpoints."
+        )->default_val("./checkpoints");  // doesn't need to exist, will create if missing
 
         // because many different optimizers use the same hyperparameter names for different purposes / defaults,
         // don't define any default here and use CLI option to detect if specific OptimizerOption default must be used
@@ -184,17 +187,17 @@ int main(int argc, const char* argv[]) {
         optim_opts->add_option("-o,--optim", optim_type, "Optimizer")
             ->default_val(optim_type)
             ->transform(CLI::CheckedTransformer(OptimMap, CLI::ignore_case));
-        auto lr_opt = optim_opts->add_option("--lr", lr, "Learning rate");
-        auto epsilon_opt = optim_opts->add_option("--epsilon", epsilon, "Epsilon");
+        auto lr_opt = optim_opts->add_option("--lr", lr, "Learning rate")->check(CLI::PositiveNumber);
+        auto epsilon_opt = optim_opts->add_option("--epsilon", epsilon, "Epsilon")->check(CLI::NonNegativeNumber);
         auto amsgrad_opt = optim_opts->add_option("--amsgrad", amsgrad, "AMSGrad");
-        auto weight_decay_opt = optim_opts->add_option("--weight-decay", amsgrad, "Weight Decay");
-        auto clipping_opt = optim_opts->add_option("--clipping", clipping, "Clipping lambda threshold");
-        auto momentum_opt = optim_opts->add_option("--momentum", clipping, "Momentum");
-        auto dampening_opt = optim_opts->add_option("--dampening", clipping, "Dampening");
+        auto weight_decay_opt = optim_opts->add_option("--weight-decay", amsgrad, "Weight Decay")->check(CLI::NonNegativeNumber);
+        auto clipping_opt = optim_opts->add_option("--clipping", clipping, "Clipping lambda threshold")->check(CLI::NonNegativeNumber);
+        auto momentum_opt = optim_opts->add_option("--momentum", clipping, "Momentum")->check(CLI::NonNegativeNumber);
+        auto dampening_opt = optim_opts->add_option("--dampening", clipping, "Dampening")->check(CLI::NonNegativeNumber);
         auto nesterov_opt = optim_opts->add_option("--nesterov", nesterov, "Nesterov");
         auto betas_opt = optim_opts->add_option("--betas", betas,
             "Beta1 and Beta2 (both requried if option is specified, separated by space)."
-        )->expected(2);
+        )->check(CLI::PositiveNumber);/*->expected(2) */  // expected size automatic with tuple
 
         #ifndef USE_LOG_COUT
 
