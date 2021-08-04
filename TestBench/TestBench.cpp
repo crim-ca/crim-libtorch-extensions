@@ -305,12 +305,12 @@ int main(int argc, const char* argv[]) {
         LOGGER(INFO) << "Number of available train samples: " << nb_total_train << std::endl;
         LOGGER(INFO) << "Number of available valid samples: " << nb_total_valid << std::endl;
 
-        if (max_train_samples != 0 || max_train_samples < nb_total_train) {
+        if (max_train_samples != 0 && max_train_samples < nb_total_train) {
             samples_train = random_pick(samples_train, max_train_samples, seed);
             nb_class_train = count_classes(samples_train.second);
             nb_total_train = samples_train.first.size();
         }
-        if (max_valid_samples != 0 || max_valid_samples < nb_total_train) {
+        if (max_valid_samples != 0 && max_valid_samples < nb_total_train) {
             samples_valid = random_pick(samples_valid, max_train_samples, seed);
             nb_class_valid = count_classes(samples_valid.second);
             nb_total_valid = samples_valid.first.size();
