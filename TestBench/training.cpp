@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <exception>
 #include <fstream>
+#include <random>
 #include <set>
 #include <vector>
 
@@ -98,7 +99,7 @@ std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels) {
 }
 
 /// Load data and labels corresponding to images from given folder(s)
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
+DataSamples load_data_from_folder(
     std::vector<std::string> folders_path,
     std::string extension,
     Label label
@@ -142,7 +143,7 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
 }
 
 /// Load data and labels corresponding to images from multiple sub-folders.
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
+DataSamples load_data_from_folder(
     std::string folder_path,
     std::string extension
 ) {
@@ -176,6 +177,26 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
         label++;
     }
     return std::make_pair(subimages, sublabels);
+}
+
+/// Randomly picks the specified amount of samples from available ones
+DataSamples random_pick(DataSamples samples, size_t amount, unsigned int seed) {
+    DataSamples picked;
+    if (samples.first.size() <= amount)
+        return samples;
+    if (amount == 0)
+        return picked;
+    auto engine = std::default_random_engine(seed);
+    picked.first.reserve(amount);
+    picked.second.reserve(amount);
+    std::vector<size_t> indices(amount);
+    std::iota(indices.begin(), indices.end(), 0);
+    std::shuffle(indices.begin(), indices.end(), engine);
+    for (auto i : indices) {
+        picked.first.push_back(samples.first[i]);
+        picked.second.push_back(samples.second[i]);
+    }
+    return picked;
 }
 
 /// Counts the number of unique classes using a set of labeled data
@@ -282,12 +303,15 @@ void show_gpu_properties() {
 
     auto nb_devices = torch::cuda::device_count();
     LOGGER(INFO) << "CUDA visible devices count: " << nb_devices << std::endl;
+    std::ostringstream oss;
+    if (nb_devices > 0)
+        oss << "Properties of CUDA devices" << std::endl;
     for (auto i_device = 0; i_device < nb_devices; i_device++) {
         auto prop = at::cuda::getDeviceProperties(i_device);
-        LOGGER(INFO) << std::endl // skip log header
-                        << "Properties of CUDA device " << i_device << std::endl
-                        << "  Device Name:            " << prop->name << std::endl
-                        << "  Compute Capabilities:   " << prop->major << "." << prop->minor << std::endl
-                        << "  Total Available Memory: " << humanizeBytes(prop->totalGlobalMem) << std::endl;
+        oss << "CUDA device " << i_device << std::endl
+            << "  Device Name:            " << prop->name << std::endl
+            << "  Compute Capabilities:   " << prop->major << "." << prop->minor << std::endl
+            << "  Total Available Memory: " << humanizeBytes(prop->totalGlobalMem) << std::endl;
     }
+    LOGGER(INFO) << oss.str();
 }

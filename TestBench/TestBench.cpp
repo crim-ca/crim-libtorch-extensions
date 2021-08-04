@@ -1,11 +1,14 @@
 
 #include <stdafx.h>
-// From https://github.com/pytorch/examples/blob/master/cpp/transfer-learning/main.cpp
+
+// reference example code:  https://github.com/pytorch/examples/blob/master/cpp/transfer-learning/main.cpp
+
 #include <memory>
 #include <algorithm>
 #include <vector>
 #include <fstream>
 #include <iomanip>
+#include <thread>
 
 #include "CLI/CLI.hpp"
 #include <torch/torch.h>
@@ -109,34 +112,17 @@ int main(int argc, const char* argv[]) {
         app.allow_windows_style_options();
         #endif
 
-        ArchType archtype { ArchType::ResNet34 };
-        app.add_option("-a,--arch", archtype, "Architecture")
-            ->default_val(ArchType::ResNet34)
-            ->transform(CLI::CheckedTransformer(ArchMap, CLI::ignore_case));
-        OptimType optimtype { OptimType::SGD };
-        app.add_option("-o,--optim", optimtype, "Optimizer")
-            ->default_val(OptimType::SGD)
-            ->transform(CLI::CheckedTransformer(OptimMap, CLI::ignore_case));
-
-        std::string ckpt_load_path;
-        app.add_option("-c,--checkpoint", ckpt_load_path, "Model checkpoint to load (must match architecture).");
-        std::string ckpt_save_path;
-        app.add_option("-s,--save-dir", ckpt_save_path, "Save location of intermediate epoch model checkpoints.")
-            ->default_val("./checkpoints");
-
         std::string dataset_folder_train, dataset_folder_valid;
         std::string data_file_extension = "jpeg";
         std::string log_file_path;
         double lr{ 1e-3 };   // only param that is mandatory to initialize options
-        double clipping{ -1.0 }, dampening{ -1.0 }, momentum{ -1.0 }, epsilon{ -1.0 };
+        double clipping{ -1.0 }, dampening{ -1.0 }, momentum{ -1.0 }, epsilon{ -1.0 }, weight_decay{ -1.0 };
         std::tuple<double, double> betas{ -1, -1 };
         bool nesterov, amsgrad;
         size_t batch_size = 16;
         size_t max_epochs = 30;
-        int max_batch_train = -1;
-        int max_batch_valid = -1;
-        int early_stop_train_batch = -1;
-        int early_stop_valid_batch = -1;
+        size_t max_train_samples = 0, max_valid_samples = 0;
+        unsigned int seed = unsigned(std::time(nullptr));  // always random if not overridden
         int workers = -1;  // allow undefined
         bool debug{ false };
         bool verbose{ false };
@@ -145,51 +131,80 @@ int main(int argc, const char* argv[]) {
 
         auto train_opts = app.add_option_group("Training Parameters",
             "Parameters that define behavior of training iterations and data loading.");
-        train_opts.add_option("--train", dataset_folder_train,
+        train_opts->add_option("--train", dataset_folder_train,
             "Directory where training images categorized by class sub-folders can be loaded from."
-        );
-        train_opts.add_option("--valid", dataset_folder_valid,
+        )->check(CLI::ExistingDirectory)->required();
+        train_opts->add_option("--valid", dataset_folder_valid,
             "Directory where validation images categorized by class sub-folders can be loaded from."
-        );
-        train_opts.add_option("-e,--extension", data_file_extension,
+        )->check(CLI::ExistingDirectory)->required();
+        train_opts->add_option("-e,--extension", data_file_extension,
             "Extension of image files to be considered for loading data."
         )->default_val(data_file_extension);
-        train_opts.add_option("--max-batch-train", max_batch_train,
-            "Early stop training step batch iteration when reaching this maximum index (based on batch size). " +
-            "Consume all available training batch samples otherwise (default)."
-        )->default_val(max_batch_train);
-        train_opts.add_option("--max-batch-valid", max_batch_valid,
-            "Early stop validation step batch iteration when reaching this maximum index (based on batch size). " +
-            "Consume all available training batch samples otherwise (default)."
-        )->default_val(max_batch_valid);
-        train_opts.add_option("-E,--max-epochs", max_epochs, "Maximum number of training epochs.")->default_val(max_epochs);
-        train_opts.add_option("-B,--batch-size", batch_size, "Batch size of each iteration.")->default_val(batch_size);
-        train_opts.add_option("-W,--workers", workers, "Number of data loader workers to employ.")->default_val(workers);
+        train_opts->add_option("--max-train-samples", max_train_samples,
+            "Maximum amount of samples to preserve from available training dataset directory. "
+            "Consume all available samples if not specified, 0 or greater than available amount."
+        );
+        train_opts->add_option("--max-valid-samples", max_valid_samples,
+            "Maximum amount of samples to preserve from available validation dataset directory. "
+            "Consume all available samples if not specified, 0 or greater than available amount."
+        );
+        train_opts->add_option("-E,--max-epochs", max_epochs,
+            "Maximum number of training epochs."
+        )->default_val(max_epochs);
+        train_opts->add_option("-B,--batch-size", batch_size,
+            "Batch size of each iteration."
+        )->default_val(batch_size);
+        train_opts->add_option("-W,--workers", workers,
+            "Number of data loader workers to employ for data loading. "
+            "If not specified or negative (default), employ whichever amount available based on CPU count. "
+            "If equal to zero, run in single-thread mode (worker will be on the same thread as main process). "
+            "Otherwise, a positive integer indicates explicitly how many worker threads to employ."
+        )->default_val(workers);
+        train_opts->add_option("-S,--seed", seed,
+            "Seed for initialization of random number generator applied wherever needed."
+        );
+
+        auto model_opts = app.add_option_group("Model Parameters",
+            "Parameters relevant for model selection and configuration.");
+        ArchType arch_type { ArchType::ResNet34 };
+        model_opts->add_option("-a,--arch", arch_type, "Architecture")
+            ->default_val(arch_type)
+            ->transform(CLI::CheckedTransformer(ArchMap, CLI::ignore_case));
+        std::string ckpt_load_path, ckpt_save_path;
+        model_opts->add_option("-c,--checkpoint", ckpt_load_path, "Model checkpoint to load (must match architecture).");
+        model_opts->add_option("-s,--save-dir", ckpt_save_path, "Save location of intermediate epoch model checkpoints.")
+            ->default_val("./checkpoints");
 
         // because many different optimizers use the same hyperparameter names for different purposes / defaults,
         // don't define any default here and use CLI option to detect if specific OptimizerOption default must be used
         auto optim_opts = app.add_option_group("Optimizer Hyperparameters",
-            "Hyperparameters values employed by the selected optimizer. " +
+            "Hyperparameters values employed by the selected optimizer. "
             "Omitted options use PyTorch defaults. Not applicable options for selected optimizer are ignored.");
-        CLI::Option* lr_opt = optim_opts.add_option("--lr", lr, "Learning rate");
-        CLI::Option* eps_opt = optim_opts.add_option("--epsilon", epsilon, "Epsilon");
-        CLI::Option* clipping_opt = optim_opts.add_option("--clipping", clipping, "Clipping lambda threshold");
-        CLI::Option* momentum_opt = optim_opts.add_option("--momentum", clipping, "Momentum");
-        CLI::Option* dampening_opt = optim_opts.add_option("--dampening", clipping, "Dampening");
-        CLI::Option* nesterov_opt = optim_opts.add_option("--nesterov", nesterov, "Nesterov");
-        CLI::Option* betas_opt = optim_opts.add_option("--betas", betas,
+        OptimType optim_type { OptimType::SGD };
+        optim_opts->add_option("-o,--optim", optim_type, "Optimizer")
+            ->default_val(optim_type)
+            ->transform(CLI::CheckedTransformer(OptimMap, CLI::ignore_case));
+        auto lr_opt = optim_opts->add_option("--lr", lr, "Learning rate");
+        auto epsilon_opt = optim_opts->add_option("--epsilon", epsilon, "Epsilon");
+        auto amsgrad_opt = optim_opts->add_option("--amsgrad", amsgrad, "AMSGrad");
+        auto weight_decay_opt = optim_opts->add_option("--weight-decay", amsgrad, "Weight Decay");
+        auto clipping_opt = optim_opts->add_option("--clipping", clipping, "Clipping lambda threshold");
+        auto momentum_opt = optim_opts->add_option("--momentum", clipping, "Momentum");
+        auto dampening_opt = optim_opts->add_option("--dampening", clipping, "Dampening");
+        auto nesterov_opt = optim_opts->add_option("--nesterov", nesterov, "Nesterov");
+        auto betas_opt = optim_opts->add_option("--betas", betas,
             "Beta1 and Beta2 (both requried if option is specified, separated by space)."
         )->expected(2);
 
         #ifndef USE_LOG_COUT
 
         auto log_opts = app.add_option_group("Logging Parameters", "Control logging options.");
-        log_opts.add_flag("-v,--verbose", verbose,
+        log_opts->add_flag("-v,--verbose", verbose,
             "Log more verbose messages including function and lines numbers."
         )->default_val(verbose);
-        log_opts.add_flag("-d,--debug", debug, "Log additional debug messages.")->default_val(debug);
-        log_opts.add_option("-l,--logfile", log_file_path, "Output log path.");
-        log_opts.add_flag("--color,!--no-color", log_color,
+        log_opts->add_flag("-d,--debug", debug, "Log additional debug messages.")->default_val(debug);
+        log_opts->add_option("-l,--logfile", log_file_path, "Output log path.");
+        log_opts->add_flag("--color,!--no-color", log_color,
             "Enable/disable color formatting of log entries."
         )->default_val(log_color);
 
@@ -235,8 +250,11 @@ int main(int argc, const char* argv[]) {
 
         uint w = 20;
         std::string sep = ": ", tab = "  ";
+        auto worker_cpu = std::thread::hardware_concurrency();
+        size_t worker_count = (workers < 0 ? worker_cpu : workers);
         LOGGER(INFO) << "Options" << std::endl
-            << tab << std::setw(w) << std::left << "Workers" << sep << (workers < 0 ? -1 : workers) << std::endl
+            << tab << std::setw(w) << std::left << "Workers" << sep << worker_count
+                << (workers != worker_cpu ? " (auto)" : "") << std::endl
             << tab << std::setw(w) << std::left << "Batch Size" << sep << batch_size << std::endl
             << tab << std::setw(w) << std::left << "Max Epochs" << sep << max_epochs << std::endl;
 
@@ -264,25 +282,47 @@ int main(int argc, const char* argv[]) {
         }
         LOGGER(DEBUG) << "Will save epoch checkpoints in [" << ckpt_save_path << "]" << std::endl;
 
-        LOGGER(INFO) << "Loading samples..." << std::endl;
+        LOGGER(INFO) << "Searching directories for samples..." << std::endl;
 
         // Get paths of images and labels from the folder paths
-        std::pair<std::vector<std::string>, std::vector<Label>> samples_train = load_data_from_folder(
-            dataset_folder_train, data_file_extension
-        );
-        std::pair<std::vector<std::string>, std::vector<Label>> samples_valid = load_data_from_folder(
-            dataset_folder_valid, data_file_extension
-        );
+        DataSamples samples_train = load_data_from_folder(dataset_folder_train, data_file_extension);
+        DataSamples samples_valid = load_data_from_folder(dataset_folder_valid, data_file_extension);
 
         size_t nb_class_train = count_classes(samples_train.second);
         size_t nb_class_valid = count_classes(samples_valid.second);
         size_t nb_class = std::max(nb_class_train, nb_class_valid);
+        size_t nb_total_train = samples_train.first.size();
+        size_t nb_total_valid = samples_valid.first.size();
+        size_t nb_total = nb_total_train + nb_total_valid;
 
-        LOGGER(INFO) << "Number of found classes: " << nb_class << std::endl;
-        LOGGER(INFO) << "Number of train classes: " << nb_class_train << std::endl;
-        LOGGER(INFO) << "Number of valid classes: " << nb_class_valid << std::endl;
-        LOGGER(INFO) << "Number of train samples: " << samples_train.first.size() << std::endl;
-        LOGGER(INFO) << "Number of valid samples: " << samples_valid.first.size() << std::endl;
+        LOGGER(INFO) << "Number of available total classes: " << nb_class << std::endl;
+        LOGGER(INFO) << "Number of available train classes: " << nb_class_train << std::endl;
+        LOGGER(INFO) << "Number of available valid classes: " << nb_class_valid << std::endl;
+        LOGGER(INFO) << "Number of available total samples: " << nb_total << std::endl;
+        LOGGER(INFO) << "Number of available train samples: " << nb_total_train << std::endl;
+        LOGGER(INFO) << "Number of available valid samples: " << nb_total_valid << std::endl;
+
+        if (max_train_samples != 0 || max_train_samples < nb_total_train) {
+            samples_train = random_pick(samples_train, max_train_samples, seed);
+            nb_class_train = count_classes(samples_train.second);
+            nb_total_train = samples_train.first.size();
+        }
+        if (max_valid_samples != 0 || max_valid_samples < nb_total_train) {
+            samples_valid = random_pick(samples_valid, max_train_samples, seed);
+            nb_class_valid = count_classes(samples_valid.second);
+            nb_total_valid = samples_valid.first.size();
+        }
+        if (nb_total != nb_total_train + nb_total_valid) {
+            nb_total = nb_total_train + nb_total_valid;
+            LOGGER(WARN) << "Number of samples was modified according to options!" << std::endl;
+            LOGGER(INFO) << "Number of selected total classes: " << nb_class << std::endl;
+            LOGGER(INFO) << "Number of selected train classes: " << nb_class_train << std::endl;
+            LOGGER(INFO) << "Number of selected valid classes: " << nb_class_valid << std::endl;
+            LOGGER(INFO) << "Number of selected total samples: " << nb_total << std::endl;
+            LOGGER(INFO) << "Number of selected train samples: " << nb_total_train << std::endl;
+            LOGGER(INFO) << "Number of selected valid samples: " << nb_total_valid << std::endl;
+        }
+
         show_machine_memory();
         show_gpu_memory();
 
@@ -296,7 +336,7 @@ int main(int argc, const char* argv[]) {
         }
 
         uint64_t image_size = 224;
-        LOGGER(INFO) << "Will resize sample images to:"
+        LOGGER(INFO) << "Will resize sample images to: "
                      << "(" << image_size << ", " << image_size << ") [enforced by model input layer]" << std::endl;
 
         #ifdef USE_BASE_MODEL
@@ -314,7 +354,7 @@ int main(int argc, const char* argv[]) {
 
         //torch::nn::AnyModule pNet;
         std::vector<torch::Tensor> params;
-        switch (archtype) {
+        switch (arch_type) {
             case ArchType::ResNet34:
                 {
                     //pNet = vision::models::ResNet34(nb_class);
@@ -405,72 +445,75 @@ int main(int argc, const char* argv[]) {
             #endif
         }*/
 
+        // TODO: for real resume training, would require to load optimizer param-group states of matching epoch
+        //       for now, only load the checkpoint as is and retrain instead of resume
+
         std::shared_ptr<torch::optim::Optimizer> pOptim;
 
-        switch (optimtype) {
+        switch (optim_type) {
             case OptimType::Adam: {
                     auto opt = torch::optim::AdamOptions(lr);
-                    opt.lr = (lr_opt->count() ? lr : opt.lr);
-                    opt.betas = (betas_opt->count() ? betas : opt.betas);
-                    opt.eps = (epsilon_opt->count() ? epsilon : opt.epsilon);
-                    opt.amsgrad = (amsgrad_opt->count() ? amsgrad : opt.amsgrad);
+                    if (lr_opt->count()) opt.lr(lr);
+                    if (betas_opt->count()) opt.betas(betas);
+                    if (epsilon_opt->count()) opt.eps(epsilon);
+                    if (amsgrad_opt->count()) opt.amsgrad(amsgrad);
                     LOGGER(INFO) << "Using Adam optimizer" << std::endl
-                        << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr << std::endl
-                        << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay << std::endl
+                        << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr() << std::endl
+                        << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay() << std::endl
                         << tab << std::setw(w) << std::left << "Betas" << sep
-                            << std::get<0>(opt.betas) << ", " << std::get<1>(opt.betas) << std::endl
-                        << tab << std::setw(w) << std::left << "Epsilon" << sep << opt.eps << std::endl
-                        << tab << std::setw(w) << std::left << "AMSGrad" << sep << opt.amsgrad << std::endl;
+                            << std::get<0>(opt.betas()) << ", " << std::get<1>(opt.betas()) << std::endl
+                        << tab << std::setw(w) << std::left << "Epsilon" << sep << opt.eps() << std::endl
+                        << tab << std::setw(w) << std::left << "AMSGrad" << sep << opt.amsgrad() << std::endl;
                     pOptim = std::make_shared<torch::optim::Adam>(params, opt);
                 }
                 break;
             case OptimType::SGD: {
                     auto opt = torch::optim::SGDOptions(lr);
-                    opt.lr = (lr_opt->count() ? lr : opt.lr);
-                    opt.nesterov = (weight_decay_opt->count() ? weight_decay : opt.weight_decay);
-                    opt.momentum = (momentum_opt->count() ? momentum : opt.momentum);
-                    opt.dampening = (dampening_opt->count() ? dampening : opt.dampening);
-                    opt.nesterov = (nesterov_opt->count() ? nesterov : opt.nesterov);
+                    if (lr_opt->count()) opt.lr(lr);
+                    if (weight_decay_opt->count()) opt.weight_decay(weight_decay);
+                    if (momentum_opt->count()) opt.momentum(momentum);
+                    if (dampening_opt->count()) opt.dampening(dampening);
+                    if (nesterov_opt->count()) opt.nesterov(nesterov);
                     LOGGER(INFO) << "Using SGD optimizer" << std::endl
-                        << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr << std::endl
-                        << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay << std::endl
-                        << tab << std::setw(w) << std::left << "Momentum" << sep << opt.momentum << std::endl
-                        << tab << std::setw(w) << std::left << "Dampening" << sep << opt.dampening << std::endl
-                        << tab << std::setw(w) << std::left << "Nesterov" << sep << opt.nesterov << std::endl;
+                        << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr() << std::endl
+                        << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay() << std::endl
+                        << tab << std::setw(w) << std::left << "Momentum" << sep << opt.momentum() << std::endl
+                        << tab << std::setw(w) << std::left << "Dampening" << sep << opt.dampening() << std::endl
+                        << tab << std::setw(w) << std::left << "Nesterov" << sep << opt.nesterov() << std::endl;
                     pOptim = std::make_shared<torch::optim::SGD>(params, opt);
                 }
                 break;
             case OptimType::SGDAGC: {
                     auto opt = torch::optim::SGDAGCOptions(lr);
-                    opt.lr = (lr_opt->count() ? lr : opt.lr);
-                    opt.nesterov = (weight_decay_opt->count() ? weight_decay : opt.weight_decay);
-                    opt.momentum = (momentum_opt->count() ? momentum : opt.momentum);
-                    opt.dampening = (dampening_opt->count() ? dampening : opt.dampening);
-                    opt.nesterov = (nesterov_opt->count() ? nesterov : opt.nesterov);
-                    opt.eps = (epsilon_opt->count() ? epsilon : opt.epsilon);
-                    opt.clipping = (clipping_opt->count() ? clipping : opt.clipping);
+                    if (lr_opt->count()) opt.lr(lr);
+                    if (weight_decay_opt->count()) opt.weight_decay(weight_decay);
+                    if (momentum_opt->count()) opt.momentum(momentum);
+                    if (dampening_opt->count()) opt.dampening(dampening);
+                    if (nesterov_opt->count()) opt.nesterov(nesterov);
+                    if (epsilon_opt->count()) opt.eps(epsilon);
+                    if (clipping_opt->count()) opt.clipping(clipping);
                     LOGGER(INFO) << "Using SGDAGC optimizer" << std::endl
-                        << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr << std::endl
-                        << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay << std::endl
-                        << tab << std::setw(w) << std::left << "Momentum" << sep << opt.momentum << std::endl
-                        << tab << std::setw(w) << std::left << "Dampening" << sep << opt.dampening << std::endl
-                        << tab << std::setw(w) << std::left << "Nesterov" << sep << opt.nesterov << std::endl
-                        << tab << std::setw(w) << std::left << "Epsilon" << sep << opt.eps << std::endl
-                        << tab << std::setw(w) << std::left << "Clipping Lambda" << sep << opt.clipping << std::endl;
-                    pOptim = std::make_shared<torch::optim::SGDAGC>(params, opt));
+                        << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr() << std::endl
+                        << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay() << std::endl
+                        << tab << std::setw(w) << std::left << "Momentum" << sep << opt.momentum() << std::endl
+                        << tab << std::setw(w) << std::left << "Dampening" << sep << opt.dampening() << std::endl
+                        << tab << std::setw(w) << std::left << "Nesterov" << sep << opt.nesterov() << std::endl
+                        << tab << std::setw(w) << std::left << "Epsilon" << sep << opt.eps() << std::endl
+                        << tab << std::setw(w) << std::left << "Clipping Lambda" << sep << opt.clipping() << std::endl;
+                    pOptim = std::make_shared<torch::optim::SGDAGC>(params, opt);
                 }
                 break;
         }
 
-        //    std::pair<std::vector<std::string>, std::vector<Label>> pairs_training, pairs_validation;
-        //    splitData(pair_images_labels, 0.8, pairs_training, pairs_validation);
+        // DataSamples pairs_training, pairs_validation;
+        // splitData(pair_images_labels, 0.8, pairs_training, pairs_validation);
 
         show_machine_memory();
         show_gpu_memory();
 
         // Initialize DataAugmentationDataset class and read data
         LOGGER(INFO) << "Generating data loaders with data augmentation..." << std::endl;
-        auto dataAugRNG = cv::RNG();
+        auto dataAugRNG = cv::RNG(seed);
         auto custom_dataset_train = DataAugmentationDataset(
             samples_train.first, samples_train.second, image_size, dataAugRNG
         ).map(torch::data::transforms::Stack<>());
@@ -481,8 +524,7 @@ int main(int argc, const char* argv[]) {
         LOGGER(INFO) << "Creating random samplers..." << std::endl;
         using RandomDataLoader = torch::data::samplers::RandomSampler;
         torch::data::DataLoaderOptions loadOpts(batch_size);
-        if (workers >= 0)
-            loadOpts.workers(workers);
+        loadOpts.workers(worker_count);
         auto data_loader_train = torch::data::make_data_loader<RandomDataLoader>(std::move(custom_dataset_train), loadOpts);
         auto data_loader_valid = torch::data::make_data_loader<RandomDataLoader>(std::move(custom_dataset_valid), loadOpts);
         auto train_size = custom_dataset_train.size().value();
@@ -491,8 +533,7 @@ int main(int argc, const char* argv[]) {
         show_gpu_memory();
 
         LOGGER(INFO) << "Starting train/valid loop..." << std::endl;
-        train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size,
-              max_epochs, max_batch_train, max_batch_valid, ckpt_save_path);
+        train(pNet, /*lin,*/ data_loader_train, data_loader_valid, pOptim, train_size, valid_size, max_epochs, ckpt_save_path);
 
         auto end_time = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed_seconds = end_time - start_time;

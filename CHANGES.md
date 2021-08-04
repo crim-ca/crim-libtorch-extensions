@@ -4,7 +4,18 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Optimizers
+  - Initialize Optimizer options with specified input parameters.
+
+* CLI
+  - Provide input options for every hyperparameter employed by every supported Optimizer.
+  - Add options to allow subset selection of batch samples to reduce training/validation iterations (for testing purposes).
+  - Add options to indicate where to save intermediate epoch model checkpoints and best accuracy one found.
+  - Add options to attempt reload of a model from checkpoint file.
+  - Improve options definition with groups, better descriptions and more input validation.
+
+* Fixes
+  - Remove left over and incorrectly included files from previously deleted `include/models` directory.
 
 [0.4.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.4.0) (2021-08-02)
 ------------------------------------------------------------------------------------------------------------------------

@@ -43,4 +43,5 @@ third[-_]party/
 data*/
 dataset*/
 checkpoint*/
+experiment*/
 output*/

@@ -86,11 +86,7 @@ std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels);
  * @param label             Label to be applied to all images retrieved from all the folders.
  * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
  */
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
-    std::vector<std::string> folders_path,
-    std::string extension,
-    Label label
-);
+DataSamples load_data_from_folder(std::vector<std::string> folders_path, std::string extension, Label label);
 
 /**
  * @brief Load data and labels corresponding to images from multiple sub-folders.
@@ -101,10 +97,16 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
  * @param extension         Extension of files that corresponds to images to be considered for loading from folders.
  * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
  */
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
-    std::string folder_path,
-    std::string extension
-);
+DataSamples load_data_from_folder(std::string folder_path, std::string extension);
+
+/**
+ * @brief Randomly picks the specified amount of samples from available ones.
+ *
+ * @param samples           Dataset samples from which to pick randomly.
+ * @param amount            Number of samples to preserve.
+ * @param seed              Random number generator seed for random selection of samples.
+ */
+DataSamples random_pick(DataSamples samples, size_t amount, unsigned int seed);
 
 /**
  * @brief Counts the number of unique classes using a set of labeled data.
@@ -202,8 +204,6 @@ void train(
     size_t train_size,
     size_t valid_size,
     size_t max_epochs = 2,
-    int early_stop_train_batch = -1,
-    int early_stop_valid_batch = -1,
     std::string checkpoint_dir = "."
 ) {
     float best_acc = 0.0;
@@ -214,7 +214,6 @@ void train(
 
     for(size_t epoch=0; epoch<max_epochs; epoch++) {
         LOGGER(INFO) << "[train] epoch " << epoch << std::endl;
-        bool early_stop_train = false, early_stop_valid = false;
         float mse = 0;
         float acc = 0.0;
         float valid_acc = 0.0, train_acc = 0.0;
@@ -266,12 +265,6 @@ void train(
                 mse += loss.template item<float>();
 
                 train_batch_index += 1;
-
-                if (early_stop_train_batch >= 0 && train_batch_index >= early_stop_train_batch) {
-                    LOGGER(WARN) << "Early stop of training batch itererations (batch: " << train_batch_index << ")" << std::endl;
-                    early_stop_train = true;
-                    break;
-                }
             }
         }
         catch (std::exception& e) {
@@ -279,11 +272,6 @@ void train(
         }
 
         for (auto& batch : *data_loader_valid) {
-            if (early_stop_valid_batch >= 0 && valid_batch_index >= early_stop_valid_batch) {
-                LOGGER(WARN) << "Early stop of validation batch itererations (batch: " << valid_batch_index << ")" << std::endl;
-                break;
-            }
-
             auto batch_size = batch.data.size(0);
             valid_batch_cumul += batch_size;
             LOGGER(DEBUG)
@@ -308,12 +296,6 @@ void train(
             valid_acc += pred.template item<float>();
 
             valid_batch_index += 1;
-
-            if (early_stop_valid_batch >= 0 && valid_batch_index >= early_stop_valid_batch) {
-                LOGGER(WARN) << "Early stop of validation batch itererations (batch: " << valid_batch_index << ")" << std::endl;
-                early_stop_valid = true;
-                break;
-            }
         }
 
 
@@ -321,9 +303,10 @@ void train(
         train_acc = acc / train_size;
         valid_acc = valid_acc / valid_size;
         LOGGER(INFO) << std::setprecision(3)
-            << "Epoch: " << epoch  << ", " << "MSE: " << mse << ", training accuracy: "
-            << train_acc << ", validation accuracy: " << valid_acc << std::endl;
-        LOGGER(INFO) << "** " << mse << " " << train_acc  << " " << valid_acc  << std::endl;
+            << "Epoch: " << epoch
+            << ", MSE: " << std::setprecision(4) << mse
+            << ", training accuracy: " << std::setprecision(4) << train_acc
+            << ", validation accuracy: " << std::setprecision(4) << valid_acc << std::endl;
 
         /*test(net, data_loader, dataset_size, lin);*/
 
@@ -344,11 +327,6 @@ void train(
             std::ofstream dst(ckpt_best, std::ios::binary);
             dst << src.rdbuf();
         }
-
-        if (early_stop_train)
-            data_loader_train->reset();
-        if (early_stop_valid)
-            data_loader_valid->reset();
     }
 }
 
