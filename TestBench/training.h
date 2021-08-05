@@ -86,18 +86,27 @@ std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels);
  * @param label             Label to be applied to all images retrieved from all the folders.
  * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
  */
-DataSamples load_data_from_folder(std::vector<std::string> folders_path, std::string extension, Label label);
+DataSamples load_data_from_folder(
+    const std::vector<std::string>& folders_path,
+    const std::string extension,
+    const Label label
+);
 
 /**
- * @brief Load data and labels corresponding to images from multiple sub-folders.
+ * @brief Load data and labels corresponding to images from multiple sub-folders corresponding to respective classes.
  *
  * Labels are generated iteratively, from 0 to N sub-folders sorted alphanumerically.
  *
  * @param folder_path       Parent folder under which to load sub-folders corresponding to different image classes.
  * @param extension         Extension of files that corresponds to images to be considered for loading from folders.
+ * @param workers           Number of worker threads to parallelize lookup of directories for image samples.
  * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
  */
-DataSamples load_data_from_folder(std::string folder_path, std::string extension);
+DataSamples load_data_from_class_folder_tree(
+    const std::string folder_path,
+    const std::string extension,
+    const size_t workers = 1
+);
 
 /**
  * @brief Randomly picks the specified amount of samples from available ones.
@@ -106,7 +115,7 @@ DataSamples load_data_from_folder(std::string folder_path, std::string extension
  * @param amount            Number of samples to preserve.
  * @param seed              Random number generator seed for random selection of samples.
  */
-DataSamples random_pick(DataSamples samples, size_t amount, unsigned int seed);
+DataSamples random_pick(DataSamples& samples, size_t amount, unsigned int seed);
 
 /**
  * @brief Counts the number of unique classes using a set of labeled data.
@@ -150,8 +159,6 @@ public:
 
     /// Returns the sample image and label as {torch::Tensor, torch::Tensor}
     torch::data::Example<> get(size_t index) override {
-
-
         LOGGER(VERBOSE) << "Process image " << index << "..." << std::endl;
         /*torch::Tensor sample_img = states.at(index);*/
         std::string img_path = images.at(index);

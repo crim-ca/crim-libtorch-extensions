@@ -272,11 +272,7 @@ int main(int argc, const char* argv[]) {
         }
 
         if (!ckpt_load_path.empty()) {
-            std::ifstream ckpt(ckpt_load_path.c_str());
-            if (!ckpt.good()) {
-                LOGGER(ERROR) << "Specified checkpoint file does not exist: [" << ckpt_load_path << "]" << std::endl;
-                return EXIT_FAILURE;
-            }
+            ckpt_load_path = cv::utils::fs::canonical(ckpt_load_path);
             LOGGER(INFO) << "Will attempt loading model checkpoint from file: [" << ckpt_load_path << "]" << std::endl;
         }
         ckpt_save_path = cv::utils::fs::canonical(ckpt_save_path);
@@ -288,8 +284,8 @@ int main(int argc, const char* argv[]) {
         LOGGER(INFO) << "Searching directories for samples..." << std::endl;
 
         // Get paths of images and labels from the folder paths
-        DataSamples samples_train = load_data_from_folder(dataset_folder_train, data_file_extension);
-        DataSamples samples_valid = load_data_from_folder(dataset_folder_valid, data_file_extension);
+        DataSamples samples_train = load_data_from_class_folder_tree(dataset_folder_train, data_file_extension, workers);
+        DataSamples samples_valid = load_data_from_class_folder_tree(dataset_folder_valid, data_file_extension, workers);
 
         size_t nb_class_train = count_classes(samples_train.second);
         size_t nb_class_valid = count_classes(samples_valid.second);
@@ -317,6 +313,7 @@ int main(int argc, const char* argv[]) {
         }
         if (nb_total != nb_total_train + nb_total_valid) {
             nb_total = nb_total_train + nb_total_valid;
+            nb_class = std::max(nb_class_train, nb_class_valid);
             LOGGER(WARN) << "Number of samples was modified according to options!" << std::endl;
             LOGGER(INFO) << "Number of selected total classes: " << nb_class << std::endl;
             LOGGER(INFO) << "Number of selected train classes: " << nb_class_train << std::endl;
@@ -357,6 +354,8 @@ int main(int argc, const char* argv[]) {
 
         //torch::nn::AnyModule pNet;
         std::vector<torch::Tensor> params;
+        auto model_loaded = false;
+        std::string load_str = " (loaded: [" + ckpt_load_path + "])";
         switch (arch_type) {
             case ArchType::ResNet34:
                 {
@@ -366,13 +365,15 @@ int main(int argc, const char* argv[]) {
                         auto net = p.get();
                     #else
                         auto net = p;
-                        if (!ckpt_load_path.empty())
+                        if (!ckpt_load_path.empty()) {
                             torch::load(p, ckpt_load_path);
+                            model_loaded = true;
+                        }
                     #endif
 
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
-                    LOGGER(INFO) << "Using ResNet34 model" << std::endl;
+                    LOGGER(INFO) << "Using model: ResNet34" << (model_loaded ? load_str : "") << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
 
                     #ifdef USE_BASE_MODEL
@@ -391,13 +392,15 @@ int main(int argc, const char* argv[]) {
                         auto net = p.get();
                     #else
                         auto net = p;
-                        if (!ckpt_load_path.empty())
+                        if (!ckpt_load_path.empty()) {
                             torch::load(p, ckpt_load_path);
+                            model_loaded = true;
+                        }
                     #endif
 
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
-                    LOGGER(INFO) << "Using EfficientNetB0 model" << std::endl;
+                    LOGGER(INFO) << "Using model: EfficientNetB0" << (model_loaded ? load_str : "") << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
 
                     #ifdef USE_BASE_MODEL
@@ -416,13 +419,15 @@ int main(int argc, const char* argv[]) {
                         auto net = p.get();
                     #else
                         auto net = p;
-                        if (!ckpt_load_path.empty())
+                        if (!ckpt_load_path.empty()) {
                             torch::load(p, ckpt_load_path);
+                            model_loaded = true;
+                        }
                     #endif
 
                     params = net->parameters();
                     if (has_cuda) net->to(torch::kCUDA);
-                    LOGGER(INFO) << "Using NFNet34 model" << std::endl;
+                    LOGGER(INFO) << "Using model: NFNet34" << (model_loaded ? load_str : "") << std::endl;
                     LOGGER(DEBUG) << std::endl << *net << std::endl;
 
                     #ifdef USE_BASE_MODEL
@@ -460,7 +465,7 @@ int main(int argc, const char* argv[]) {
                     if (betas_opt->count()) opt.betas(betas);
                     if (epsilon_opt->count()) opt.eps(epsilon);
                     if (amsgrad_opt->count()) opt.amsgrad(amsgrad);
-                    LOGGER(INFO) << "Using Adam optimizer" << std::endl
+                    LOGGER(INFO) << "Using optimizer: Adam" << std::endl
                         << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr() << std::endl
                         << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay() << std::endl
                         << tab << std::setw(w) << std::left << "Betas" << sep
@@ -477,7 +482,7 @@ int main(int argc, const char* argv[]) {
                     if (momentum_opt->count()) opt.momentum(momentum);
                     if (dampening_opt->count()) opt.dampening(dampening);
                     if (nesterov_opt->count()) opt.nesterov(nesterov);
-                    LOGGER(INFO) << "Using SGD optimizer" << std::endl
+                    LOGGER(INFO) << "Using optimizer: SGD" << std::endl
                         << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr() << std::endl
                         << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay() << std::endl
                         << tab << std::setw(w) << std::left << "Momentum" << sep << opt.momentum() << std::endl
@@ -495,7 +500,7 @@ int main(int argc, const char* argv[]) {
                     if (nesterov_opt->count()) opt.nesterov(nesterov);
                     if (epsilon_opt->count()) opt.eps(epsilon);
                     if (clipping_opt->count()) opt.clipping(clipping);
-                    LOGGER(INFO) << "Using SGDAGC optimizer" << std::endl
+                    LOGGER(INFO) << "Using optimizer: SGDAGC" << std::endl
                         << tab << std::setw(w) << std::left << "Learning Rate" << sep << opt.lr() << std::endl
                         << tab << std::setw(w) << std::left << "Weight Decay" << sep << opt.weight_decay() << std::endl
                         << tab << std::setw(w) << std::left << "Momentum" << sep << opt.momentum() << std::endl

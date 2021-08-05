@@ -2,7 +2,31 @@
 
 #ifdef USE_LOG_COUT
 
-    #define LOGGER(level) std::cout 
+    #include <iostream>
+    #include <mutex>
+
+    // https://stackoverflow.com/a/45046349/5936364
+    // Async Console Output
+    struct acout
+    {
+        std::unique_lock<std::mutex> lk;
+        acout() : lk(std::unique_lock<std::mutex>(mtx_cout)) {}
+
+        template<typename T>
+        acout& operator<<(const T& t)
+        {
+            std::cout << t;
+            return *this;
+        }
+
+        acout& operator<<(std::ostream& (*fp)(std::ostream&))
+        {
+            std::cout << fp;
+            return *this;
+        }
+    };
+
+    #define LOGGER(level) acout
 
 #else
 
