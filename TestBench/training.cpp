@@ -11,7 +11,9 @@
 #include <algorithm>
 #include <exception>
 #include <fstream>
+#include <random>
 #include <set>
+#include <thread>
 #include <vector>
 
 #include "cuda.h"
@@ -98,10 +100,10 @@ std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels) {
 }
 
 /// Load data and labels corresponding to images from given folder(s)
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
-    std::vector<std::string> folders_path,
-    std::string extension,
-    Label label
+DataSamples load_data_from_folder(
+    const std::vector<std::string>& folders_path,
+    const std::string extension,
+    const Label label
 ) {
     std::vector<std::string> list_images;
     std::vector<Label> list_labels;
@@ -129,26 +131,46 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
                     }
                 }
             }
+            #
             LOGGER(DEBUG)
                 << "Loading directory: [" << base_name << "] (extension: "
                 << extension << ") found samples: " << img_count << std::endl;
             closedir(dir);
         } else {
-            std::cout << "Could not open directory" << std::endl;
+            LOGGER(WARN) << "Could not open directory: [" << base_name << "]" << std::endl;
             // return EXIT_FAILURE;
         }
     }
     return std::make_pair(list_images, list_labels);
 }
 
-/// Load data and labels corresponding to images from multiple sub-folders.
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
-    std::string folder_path,
-    std::string extension
+void load_data_task(
+    const std::vector<std::string>& dir_paths,
+    const std::vector<Label>& dir_labels,
+    const std::vector<size_t>& indices,
+    DataSamples& samples,
+    const std::string extension,
+    const size_t worker
+) {
+    for (auto i : indices) {
+        LOGGER(VERBOSE) << "Parallel worker (" << worker << ") load (" << i << ")" << std::endl;
+        auto data = load_data_from_folder({ dir_paths[i] }, extension, dir_labels[i]);
+        samples.first.insert(samples.first.end(), data.first.begin(), data.first.end());
+        samples.second.insert(samples.second.end(), data.second.begin(), data.second.end());
+    }
+}
+
+/// Load data and labels corresponding to images from multiple sub-folders corresponding to respective classes.
+DataSamples load_data_from_class_folder_tree(
+    const std::string folder_path,
+    const std::string extension,
+    const size_t workers
 ) {
     DIR* dir;
     struct dirent *ent;
     std::vector<std::string> subdirs;
+
+    // find all subdirs with potential image samples
     if ((dir = opendir(folder_path.c_str())) != NULL) {
         std::vector<std::string> folders;
         while((ent = readdir(dir)) != NULL) {
@@ -164,18 +186,91 @@ std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
         auto msg = "Invalid directory does not exist [" + folder_path + "]";
         throw std::runtime_error(msg);
     }
-
-    Label label = 0;
-    std::vector<std::string> subimages;
-    std::vector<Label> sublabels;
     std::sort(subdirs.begin(), subdirs.end());
-    for (auto subdir : subdirs) {
-        auto data = load_data_from_folder({ subdir }, extension, label);
-        subimages.insert(subimages.end(), data.first.begin(), data.first.end());
-        sublabels.insert(sublabels.end(), data.second.begin(), data.second.end());
-        label++;
+    std::vector<DataSamples> thread_samples(workers);
+    Label label_index = 0;
+
+    if (workers <= 1) {
+        LOGGER(VERBOSE) << "Loading single thread" << std::endl;
+        for (auto sub_dir : subdirs) {
+            auto data = load_data_from_folder({ sub_dir }, extension, label_index);
+            thread_samples[0].first.insert(thread_samples[0].first.end(), data.first.begin(), data.first.end());
+            thread_samples[0].second.insert(thread_samples[0].second.end(), data.second.begin(), data.second.end());
+            label_index++;
+        }
+        return thread_samples[0];
     }
-    return std::make_pair(subimages, sublabels);
+
+    std::vector<Label> subdir_labels(subdirs.size());
+    std::iota(subdir_labels.begin(), subdir_labels.end(), label_index);
+
+    // prepare worker ranges
+    LOGGER(VERBOSE) << "Parallel workers: " << workers << std::endl;
+    std::vector<std::thread> thread_workers(workers);
+    auto offset = subdirs.size() / workers;
+    auto remain = subdirs.size() % workers;
+    std::vector<size_t> offsets(workers, offset);
+    for (auto i = 0; i < remain; ++i)
+        offsets[i]++;  // share remainder since each dir can have a lot of samples, don't dump all work on last thread
+
+    // parallel load samples from dirs
+    LOGGER(VERBOSE) << "Starting parallel loading..." << std::endl;
+    size_t start = 0;
+    for (int i = 0; i < workers; i++) {
+        LOGGER(VERBOSE) << "Parallel worker " << i
+            << ": (start: " << start << " end: " << start + offsets[i] << " amount: " << offsets[i] << ")" << std::endl;
+        std::vector<size_t> indices(offsets[i]);
+        std::iota(indices.begin(), indices.end(), start);
+        LOGGER(VERBOSE) << "Parallel worker " << i
+            << ": load (start: " << indices[0] << " end: " << indices[indices.size()-1] << ")" << std::endl;
+        thread_workers[i] = std::thread(load_data_task,
+            std::ref(subdirs),
+            std::ref(subdir_labels),
+            std::move(indices),
+            std::ref(thread_samples[i]),
+            extension,
+            i
+        );
+        start += offsets[i];
+    }
+    for (auto& thread : thread_workers)
+        thread.join();
+
+    // merge results from threads
+    LOGGER(VERBOSE) << "Merging parallel worker results..." << std::endl;
+    std::vector<std::string> images;
+    std::vector<Label> labels;
+    std::size_t total_samples = 0;
+    for (const auto& sub : thread_samples)
+        total_samples += sub.first.size();
+    images.reserve(total_samples);
+    labels.reserve(total_samples);
+    for (const auto& sub : thread_samples) {
+        images.insert(images.end(), sub.first.begin(), sub.first.end());
+        labels.insert(labels.end(), sub.second.begin(), sub.second.end());
+    }
+    return std::make_pair(images, labels);
+}
+
+/// Randomly picks the specified amount of samples from available ones
+DataSamples random_pick(DataSamples& samples, size_t amount, unsigned int seed) {
+    DataSamples picked;
+    if (samples.first.size() <= amount)
+        return samples;
+    if (amount == 0)
+        return picked;
+    auto engine = std::default_random_engine(seed);
+    picked.first.reserve(amount);
+    picked.second.reserve(amount);
+    std::vector<size_t> indices(samples.first.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::shuffle(indices.begin(), indices.end(), engine);
+    indices.resize(amount);
+    for (auto i : indices) {
+        picked.first.push_back(samples.first[i]);
+        picked.second.push_back(samples.second[i]);
+    }
+    return picked;
 }
 
 /// Counts the number of unique classes using a set of labeled data
@@ -282,12 +377,15 @@ void show_gpu_properties() {
 
     auto nb_devices = torch::cuda::device_count();
     LOGGER(INFO) << "CUDA visible devices count: " << nb_devices << std::endl;
+    std::ostringstream oss;
+    if (nb_devices > 0)
+        oss << "Properties of CUDA devices" << std::endl;
     for (auto i_device = 0; i_device < nb_devices; i_device++) {
         auto prop = at::cuda::getDeviceProperties(i_device);
-        LOGGER(INFO) << std::endl // skip log header
-                        << "Properties of CUDA device " << i_device << std::endl
-                        << "  Device Name:            " << prop->name << std::endl
-                        << "  Compute Capabilities:   " << prop->major << "." << prop->minor << std::endl
-                        << "  Total Available Memory: " << humanizeBytes(prop->totalGlobalMem) << std::endl;
+        oss << "CUDA device " << i_device << std::endl
+            << "  Device Name:            " << prop->name << std::endl
+            << "  Compute Capabilities:   " << prop->major << "." << prop->minor << std::endl
+            << "  Total Available Memory: " << humanizeBytes(prop->totalGlobalMem) << std::endl;
     }
+    LOGGER(INFO) << oss.str();
 }

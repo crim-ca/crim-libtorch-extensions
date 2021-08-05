@@ -244,7 +244,7 @@ clean-install:	## clean output install locations
 
 .PHONY: clean-test
 clean-test:  ## remove test artefacts
-	@-rm -f "$(APP_ROOT)/TestBench.log"
+	@-rm -f "$(DEMO_LOG_FILE)"
 
 ### --- Project targets --- ###
 
@@ -283,7 +283,7 @@ install-python:  ## install library extension with Python/C++ bindings into the 
 	python setup.py install
 
 .PHONY: test-bench-help
-test-bench-help:  ## call the help of the TestBench application (attempts building it if it doesn't exist)
+test-bench-help: clean-test  ## call help command of TestBench application (attempts building it if it doesn't exist)
 	@test -f "$(BUILD_DIR)/TestBench/TestBench" || ( \
 		$(ECHO) "$(_WARN)TestBench was not found. Attempting to build and install it." && \
 		$(MAKE) -j $(shell nproc) build \
@@ -292,7 +292,7 @@ test-bench-help:  ## call the help of the TestBench application (attempts buildi
 
 # add conda
 .PHONY: test-bench-demo
-test-bench-demo: build  ## call the TestBench application with demo parameters (must have access to data drives)
+test-bench-demo: build clean-test  ## call TestBench application with demo parameters (must have access to data drives)
 	@$(ECHO) "$(_INFO)Starting TestBench demo..."
 	$(BUILD_DIR)/TestBench/TestBench \
 		--arch $(DEMO_MODEL) \

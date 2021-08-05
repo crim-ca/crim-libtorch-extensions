@@ -248,8 +248,8 @@ EfficientNetV1Impl::EfficientNetV1Impl(const EfficientNetOptions& params, size_t
     _dropout = torch::nn::Dropout(torch::nn::DropoutOptions().p(_params.dropout_rate).inplace(true));
     _fc = torch::nn::Linear(torch::nn::LinearOptions(out_channels, num_classes).bias(false));
 
-    register_module(random_string(), *_conv_stem);
-    register_module(random_string(), *_conv_head);
+    register_module("conv_stem", *_conv_stem);
+    register_module("conv_head", *_conv_head);
 
     register_module("avgpool", _avg_pooling);
     register_module("bn0", _bn0);
@@ -261,7 +261,7 @@ EfficientNetV1Impl::EfficientNetV1Impl(const EfficientNetOptions& params, size_t
 // Calls extract_features to extract features, applies final linear layer, and returns logits.
 torch::Tensor EfficientNetV1Impl::forward(torch::Tensor inputs)
 {
-    
+
     auto bs = inputs.size(0);
     auto x = extract_features(inputs);
     x = _avg_pooling->forward(x);

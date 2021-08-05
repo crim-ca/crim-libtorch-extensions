@@ -4,7 +4,27 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Data
+  - Improve data discovery when searching directories for samples by using multi-threaded loops.
+
+* Models
+  - `EfficientNet`: replace randomly generated string names of `conv_head` and `conv_stem` Conv2d layers by their
+    real names to ensure they can be matched when reloading the model from checkpoint file (error not found otherwise).
+
+* Optimizers
+  - Initialize Optimizer options with specified input parameters.
+
+* CLI
+  - Provide input options to configure every hyperparameter employed by every supported Optimizer.
+  - Add options `--max-train-samples` and `--max-valid-samples` to allow subset selection of batch samples
+    to reduce initial training/validation iterations (for testing purposes).
+  - Add option `--save-dir` to indicate where to save intermediate epoch model checkpoints and best accuracy one found.
+  - Add option `--checkpoint` to attempt reload of a model from checkpoint `.pt` file.
+  - Improve options definition with groups, better descriptions and more input validation of values and paths.
+
+* Fixes
+  - Remove left over and incorrectly included files from previously deleted `include/models` directory.
+  - Add `acout` logging when not using `plog` to ensure that multi-threaded calls don't generate overlaped outputs.
 
 [0.4.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.4.0) (2021-08-02)
 ------------------------------------------------------------------------------------------------------------------------

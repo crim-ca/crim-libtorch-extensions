@@ -9,6 +9,8 @@
 #endif
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/utils/filesystem.hpp>
+
 #include <torch/torch.h>
 #include <torch/script.h>
 
@@ -84,25 +86,36 @@ std::vector<torch::Tensor> process_labels(std::vector<Label> list_labels);
  * @param label             Label to be applied to all images retrieved from all the folders.
  * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
  */
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
-    std::vector<std::string> folders_path,
-    std::string extension,
-    Label label
+DataSamples load_data_from_folder(
+    const std::vector<std::string>& folders_path,
+    const std::string extension,
+    const Label label
 );
 
 /**
- * @brief Load data and labels corresponding to images from multiple sub-folders.
+ * @brief Load data and labels corresponding to images from multiple sub-folders corresponding to respective classes.
  *
  * Labels are generated iteratively, from 0 to N sub-folders sorted alphanumerically.
  *
  * @param folder_path       Parent folder under which to load sub-folders corresponding to different image classes.
  * @param extension         Extension of files that corresponds to images to be considered for loading from folders.
+ * @param workers           Number of worker threads to parallelize lookup of directories for image samples.
  * @return                  Returns pair of vectors of string (image locations) and int (respective labels)
  */
-std::pair<std::vector<std::string>, std::vector<Label>> load_data_from_folder(
-    std::string folder_path,
-    std::string extension
+DataSamples load_data_from_class_folder_tree(
+    const std::string folder_path,
+    const std::string extension,
+    const size_t workers = 1
 );
+
+/**
+ * @brief Randomly picks the specified amount of samples from available ones.
+ *
+ * @param samples           Dataset samples from which to pick randomly.
+ * @param amount            Number of samples to preserve.
+ * @param seed              Random number generator seed for random selection of samples.
+ */
+DataSamples random_pick(DataSamples& samples, size_t amount, unsigned int seed);
 
 /**
  * @brief Counts the number of unique classes using a set of labeled data.
@@ -146,8 +159,6 @@ public:
 
     /// Returns the sample image and label as {torch::Tensor, torch::Tensor}
     torch::data::Example<> get(size_t index) override {
-       
-
         LOGGER(VERBOSE) << "Process image " << index << "..." << std::endl;
         /*torch::Tensor sample_img = states.at(index);*/
         std::string img_path = images.at(index);
@@ -170,14 +181,17 @@ public:
  *
  * @tparam Dataloader   Type of data loader employed by the training operation. Derived from Torch Sampler.
  *
- * @param net                   Pre-trained model without last FC layer
- * @param lin                   Last FC layer with revised output features count depending on the number of classes
- * @param data_loader_train     Training sample set data loader
- * @param data_loader_train     Validation sample set data loader
- * @param optimizer             Optimizer to use (e.g.: Adam, SGD, etc.)
- * @param train_size            Size of training dataset
- * @param valid_size            Size of validation dataset
- * @param max_epochs            Maximum number of training epochs
+ * @param net                       Pre-trained model without last FC layer
+ * @param lin                       Last FC layer with revised output features count depending on the number of classes
+ * @param data_loader_train         Training sample set data loader
+ * @param data_loader_train         Validation sample set data loader
+ * @param optimizer                 Optimizer to use (e.g.: Adam, SGD, etc.)
+ * @param train_size                Size of training dataset
+ * @param valid_size                Size of validation dataset
+ * @param max_epochs                Maximum number of training epochs
+ * @param early_stop_train_batch    Force early stop of training batch iterations when reaching index (default: all otherwise).
+ * @param early_stop_valid_batch    Force early stop of validation batch iterations when reaching index (default: all otherwise).
+ * @param checkpoint_dir            Directory where to save intermediate model checkpoints after each epoch (+ best acc).
  */
 template<typename Dataloader>
 void train(
@@ -196,9 +210,11 @@ void train(
     std::shared_ptr<torch::optim::Optimizer> optimizer,
     size_t train_size,
     size_t valid_size,
-    size_t max_epochs = 2
+    size_t max_epochs = 2,
+    std::string checkpoint_dir = "."
 ) {
-    float best_accuracy = 0.0;
+    float best_acc = 0.0;
+    size_t best_epoch = 0;
 
     LOGGER(DEBUG) << "Training set size:   " << train_size << std::endl;
     LOGGER(DEBUG) << "Validation set size: " << valid_size << std::endl;
@@ -207,7 +223,7 @@ void train(
         LOGGER(INFO) << "[train] epoch " << epoch << std::endl;
         float mse = 0;
         float acc = 0.0;
-        float valid_acc = 0.0;
+        float valid_acc = 0.0, train_acc = 0.0;
         size_t train_batch_index = 0;
         size_t valid_batch_index = 0;
         size_t train_batch_cumul = 0;
@@ -218,7 +234,8 @@ void train(
                 train_batch_cumul += batch_size;
                 LOGGER(DEBUG)
                     << "[train] epoch " << epoch << " batch " << train_batch_index
-                    << " (" << train_batch_cumul << "/" << train_size << ", " 
+                    << " (" << train_batch_cumul << "/" << train_size << ", "
+                    << std::setprecision(3) << std::fixed
                     << 100.0*static_cast<float>(train_batch_cumul) / static_cast<float>(train_size) << "%)" << std::endl;
 
                 auto data = batch.data;
@@ -267,6 +284,7 @@ void train(
             LOGGER(DEBUG)
                 << "[valid] epoch " << epoch << " batch " << valid_batch_index
                 << " (" << valid_batch_cumul << "/" << valid_size << ", "
+                << std::setprecision(3) << std::fixed
                 << 100.0*static_cast<float>(valid_batch_cumul) / static_cast<float>(valid_size) << "%)" << std::endl;
             auto data = batch.data;
             auto target = batch.target.squeeze();
@@ -283,22 +301,38 @@ void train(
             output = output.view({ output.size(0), -1 });
             auto pred = output.argmax(1).eq(target).sum();
             valid_acc += pred.template item<float>();
+
+            valid_batch_index += 1;
         }
 
 
         mse = mse/float(train_batch_index); // Take mean of loss
+        train_acc = acc / train_size;
+        valid_acc = valid_acc / valid_size;
         LOGGER(INFO) << std::setprecision(3)
-            << "Epoch: " << epoch  << ", " << "MSE: " << mse << ", training accuracy: "
-            << acc / train_size << ", validation accuracy: " << valid_acc / valid_size << std::endl;
-        LOGGER(INFO) << "** " << mse << " " << acc/train_size  << " " << valid_acc/valid_size  << std::endl;
+            << "Epoch: " << epoch
+            << ", MSE: " << std::setprecision(4) << mse
+            << ", training accuracy: " << std::setprecision(4) << train_acc
+            << ", validation accuracy: " << std::setprecision(4) << valid_acc << std::endl;
 
         /*test(net, data_loader, dataset_size, lin);*/
 
-        if(valid_acc/valid_size > best_accuracy) {
-            best_accuracy = valid_acc/valid_size;
-            LOGGER(DEBUG) << "Saving model [not implemented!]" << std::endl;
-            ///net.get().save("model.pt");   need a cast?
-            //torch::save(lin, "model_linear.pt");
+        LOGGER(INFO) << "Saving model checkpoint (epoch " << epoch << ")" << std::endl;
+        std::string ckpt_path = cv::utils::fs::join(checkpoint_dir, "model-epoch-" + std::to_string(epoch) + ".pt");
+        torch::save(net.ptr(), ckpt_path);
+
+        if (valid_acc > best_acc) {
+            if (epoch != 0) {
+                LOGGER(INFO) << "Updating new best model checkpoint: (epoch "
+                    << best_epoch << ": " << std::setprecision(1) << std::fixed << best_acc << "%) -> (epoch "
+                    << epoch << ": " << std::setprecision(1) << std::fixed << valid_acc << "%)" << std::endl;
+            }
+            best_epoch = epoch;
+            best_acc = valid_acc;
+            std::string ckpt_best = cv::utils::fs::join(checkpoint_dir, "model-best.pt");
+            std::ifstream src(ckpt_path, std::ios::binary);
+            std::ofstream dst(ckpt_best, std::ios::binary);
+            dst << src.rdbuf();
         }
     }
 }
