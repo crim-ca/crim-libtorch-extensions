@@ -3,7 +3,7 @@
 Provides multiple algorithm implementation with Python/C++ bindings
 as extensions to `libtorch` ([PyTorch][pytorch] C++ API).
 
-<img alt="version-0.4.0" src="https://img.shields.io/badge/version-0.4.0-blue"/> <br>
+<img alt="version-0.5.0" src="https://img.shields.io/badge/version-0.5.0-blue"/> <br>
 ______
 
 ## Contents

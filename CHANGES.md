@@ -4,6 +4,12 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
+* Nothing new for the moment.
+
+[0.5.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.5.0) (2021-08-04)
+------------------------------------------------------------------------------------------------------------------------
+____________
+
 * Data
   - Improve data discovery when searching directories for samples by using multi-threaded loops.
 
