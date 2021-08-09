@@ -8,9 +8,9 @@
 *.egg
 *.egg-info/
 **/__pycache__/
-build/
-dist/
-install/
+build*
+dist*
+install*
 *.so
 *.a
 *.o
@@ -40,8 +40,8 @@ external/
 third[-_]party/
 
 # Common experiment directories
-data*/
-dataset*/
-checkpoint*/
-experiment*/
-output*/
+data*
+checkpoint*
+experiment*
+output*
+
