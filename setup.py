@@ -202,7 +202,7 @@ setup(
     maintainer_email="francis.charette-migneault@crim.ca",
     contact="CRIM",
     contact_email="info@crim.ca",
-    # license="",  # FIXME: pick a license for publish, also adjust classifier below
+    license="BSD 3-Clause",
     keywords=", ".join([
         "PyTorch",
         "libtorch",
@@ -245,9 +245,8 @@ setup(
         "Intended Audience :: Developers",
         "Intended Audience :: Education"
         "Intended Audience :: Science/Research",
-        # "License :: OSI Approved :: ??? License"   # MIT or Apache ?,
+        "License :: OSI Approved :: BSD License",
         "Natural Language :: English",
-        # to validate Windows
         "Operating System :: Microsoft :: Windows",
         "Operating System :: Microsoft :: Windows :: Windows 10",
         "Operating System :: Unix",
