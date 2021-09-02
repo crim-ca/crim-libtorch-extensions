@@ -4,6 +4,8 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
+* Increase logging level of `TestBench` batch iteration reporting to `INFO` since this information is useful for
+  monitoring the current state/progress of long running training epochs.
 * Add `LICENSE` file and corresponding metadata in `setup.py`.
 
 [0.5.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.5.0) (2021-08-04)
