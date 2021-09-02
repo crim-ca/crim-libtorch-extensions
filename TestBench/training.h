@@ -232,7 +232,7 @@ void train(
             for (auto& batch : *data_loader_train) {
                 auto batch_size = batch.data.size(0);
                 train_batch_cumul += batch_size;
-                LOGGER(DEBUG)
+                LOGGER(INFO)
                     << "[train] epoch " << epoch << " batch " << train_batch_index
                     << " (" << train_batch_cumul << "/" << train_size << ", "
                     << std::setprecision(3) << std::fixed
@@ -281,7 +281,7 @@ void train(
         for (auto& batch : *data_loader_valid) {
             auto batch_size = batch.data.size(0);
             valid_batch_cumul += batch_size;
-            LOGGER(DEBUG)
+            LOGGER(INFO)
                 << "[valid] epoch " << epoch << " batch " << valid_batch_index
                 << " (" << valid_batch_cumul << "/" << valid_size << ", "
                 << std::setprecision(3) << std::fixed
