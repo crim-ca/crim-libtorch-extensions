@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Add `LICENSE` file and corresponding metadata in `setup.py`.
 
 [0.5.0](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.5.0) (2021-08-04)
 ------------------------------------------------------------------------------------------------------------------------
