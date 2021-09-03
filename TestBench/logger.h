@@ -4,6 +4,7 @@
 
     #include <iostream>
     #include <mutex>
+static std::mutex mtx_cout;
 
     // https://stackoverflow.com/a/45046349/5936364
     // Async Console Output
@@ -25,8 +26,11 @@
             return *this;
         }
     };
-
-    #define LOGGER(level) acout
+    
+    
+    //#define LOGGER(level) acout
+    static acout _acout;
+    #define LOGGER(level) _acout
 
 #else
 
@@ -37,7 +41,6 @@
     #include <plog/Appenders/ConsoleAppender.h>
     #include <plog/Appenders/ColorConsoleAppender.h>
     #include <plog/Appenders/RollingFileAppender.h>
-
     #include "formatter.h"
 
     #define VERBOSE plog::verbose
