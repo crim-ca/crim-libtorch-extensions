@@ -4,7 +4,8 @@
 
     #include <iostream>
     #include <mutex>
-static std::mutex mtx_cout;
+
+    static std::mutex mtx_cout;
 
     // https://stackoverflow.com/a/45046349/5936364
     // Async Console Output
