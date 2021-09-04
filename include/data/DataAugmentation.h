@@ -33,11 +33,13 @@
 
 #ifndef __DATA_AUGMENTATION_H__
 #define __DATA_AUGMENTATION_H__
-#include "torchvision/macros.h"  // VISION_API
+
 #include <opencv2/core/core.hpp>
 
+#include "windows/macros.h"  
 
-cv::Mat VISION_API ImageTransform(
+
+cv::Mat CTE_API ImageTransform(
 	const cv::Mat& img,
 	uint64_t image_size,
 	double yaw_range,
@@ -55,7 +57,7 @@ cv::Mat VISION_API ImageTransform(
 );
 
 
-void VISION_API DataAugmentation(
+void CTE_API DataAugmentation(
 	const std::vector<std::string>& img_files,
 	const std::vector<std::vector<cv::Rect>>& areas,
 	const std::string& output_folder,

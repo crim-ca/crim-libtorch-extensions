@@ -1,9 +1,8 @@
 #pragma once
 #include <string>
-
 #include <torch/nn.h>
-#include "torchvision/macros.h"  // VISION_API
 
+#include "windows/macros.h"  
 #include "nn/models/BaseModel.h"
 #include "nn/modules/BaseConv.h"
 
@@ -34,7 +33,7 @@ namespace _nfnetimpl {
     // 1x1 convolution
     ScaledStdConv2d myconv1x1(int64_t in, int64_t out, int64_t stride = 1);
 
-    struct VISION_API BasicBlock : torch::nn::Module {
+    struct CTE_API BasicBlock : torch::nn::Module {
         template <typename Block>
         friend struct vision::models::NFNetImpl;
 
@@ -62,7 +61,7 @@ namespace _nfnetimpl {
         torch::Tensor forward(torch::Tensor x);
     };
 
-    struct VISION_API Bottleneck : torch::nn::Module {
+    struct CTE_API Bottleneck : torch::nn::Module {
         template <typename Block>
         friend struct vision::models::NFNetImpl;
 
@@ -217,38 +216,38 @@ public:
 };
 */
 
-struct VISION_API NFNet18Impl : NFNetImpl<_nfnetimpl::BasicBlock> {
+struct CTE_API NFNet18Impl : NFNetImpl<_nfnetimpl::BasicBlock> {
     explicit NFNet18Impl(
         int64_t num_classes = 1000,
         bool zero_init_residual = false);
 };
 
-struct VISION_API NFNet34Impl : NFNetImpl<_nfnetimpl::BasicBlock> {
+struct CTE_API NFNet34Impl : NFNetImpl<_nfnetimpl::BasicBlock> {
     explicit NFNet34Impl(
         int64_t num_classes = 1000,
         bool zero_init_residual = false);
 };
 
-struct VISION_API NFNet50Impl : NFNetImpl<_nfnetimpl::Bottleneck> {
+struct CTE_API NFNet50Impl : NFNetImpl<_nfnetimpl::Bottleneck> {
     explicit NFNet50Impl(
         int64_t num_classes = 1000,
         bool zero_init_residual = false);
 };
 
-struct VISION_API NFNet101Impl : NFNetImpl<_nfnetimpl::Bottleneck> {
+struct CTE_API NFNet101Impl : NFNetImpl<_nfnetimpl::Bottleneck> {
     explicit NFNet101Impl(
         int64_t num_classes = 1000,
         bool zero_init_residual = false);
 };
 
-struct VISION_API NFNet152Impl : NFNetImpl<_nfnetimpl::Bottleneck> {
+struct CTE_API NFNet152Impl : NFNetImpl<_nfnetimpl::Bottleneck> {
     explicit NFNet152Impl(
         int64_t num_classes = 1000,
         bool zero_init_residual = false);
 };
 
 template <typename Block>
-struct VISION_API NFNet : torch::nn::ModuleHolder<NFNetImpl<Block>> {
+struct CTE_API NFNet : torch::nn::ModuleHolder<NFNetImpl<Block>> {
     using torch::nn::ModuleHolder<NFNetImpl<Block>>::ModuleHolder;
 };
 
