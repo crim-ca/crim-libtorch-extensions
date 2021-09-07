@@ -152,13 +152,15 @@ The following "recipe" has been shown to work on Win10-64 bits (provided `conda`
 > conda install -c pytorch pytorch=1.8
 > conda install -c conda-forge cli11
 > conda install -c conda-forge opencv=4.0.1
-> cmake -B build  -S . -DTORCH_ROOT=C:\Users\<user>\AppData\Local\Continuum\anaconda3\Lib\site-packages\torch 
--DTORCHVISION_DIR="C:\Program Files (x86)\torchvision" -DOPENCV_DIR=C:\Users\<user>\AppData\Local\Continuum\anaconda3\Library\lib  
--DCLI11_DIR=C:\Users\<user>\AppData\Local\Continuum\anaconda3\pkgs\<CLI package folder>\Library -DWITH_LOG_COUT=ON
+> cmake -B build  -S . -DTORCH_ROOT=%LocalAppData%\Continuum\anaconda3\Lib\site-packages\torch \
+                       -DTORCHVISION_DIR="C:\Program Files (x86)\torchvision" \
+                       -DOPENCV_DIR=%LocalAppData%\Continuum\anaconda3\Library\lib \ 
+                       -DCLI11_DIR=%LocalAppData%\Continuum\anaconda3\pkgs\<CLI package folder>\Library \
+                       -DWITH_LOG_COUT=ON
 ```
 Notes:
-- As of September 2021, no conda package is available on Win64 for `PLog`, hence the `-DWITH_LOG_COUT=ON switch`.
-- Manual installation of `Torchvision` is required (default installation folder is under `C:\Program Files (x86)`).
+- As of September 2021, no conda package is available on Win64 for [plog][plog], hence the `-DWITH_LOG_COUT=ON switch`.
+- Manual installation of [TorchVision][torchvision] is required (default installation folder is under `C:\Program Files (x86)`).
 
 ### Compile Python Bindings
 
