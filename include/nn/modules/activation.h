@@ -1,7 +1,7 @@
 #pragma once
 
 #include <torch/torch.h>
-#include "windows/macros.h"  
+#include "cte_macros.h"  
 
 namespace torch {
 namespace nn {

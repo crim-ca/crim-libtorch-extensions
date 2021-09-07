@@ -2,7 +2,7 @@
 #include <string>
 #include <torch/nn.h>
 
-#include "windows/macros.h"  
+#include "cte_macros.h"  
 #include "nn/models/BaseModel.h"
 #include "nn/modules/BaseConv.h"
 

@@ -12,7 +12,7 @@
 #include "nn/models/BaseModel.h"
 #include "nn/modules/activation.h"
 #include <torch/torch.h>
-#include "windows/macros.h" 
+#include "cte_macros.h" 
 
 namespace vision {
 namespace models {

@@ -36,7 +36,7 @@
 
 #include <opencv2/core/core.hpp>
 
-#include "windows/macros.h"  
+#include "cte_macros.h"  
 
 
 cv::Mat CTE_API ImageTransform(

@@ -9,7 +9,7 @@
 #include <torch/optim/optimizer.h>
 #include <torch/optim/sgd.h>
 #include <torch/types.h>
-#include "windows/macros.h"  
+#include "cte_macros.h"  
 
 
 namespace torch
