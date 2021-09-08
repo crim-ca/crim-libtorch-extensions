@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Apply various fixes and reference documentation details to prepare environment for ``Windows C++ Only`` installation.
 
 [0.5.1](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.5.1) (2021-09-02)
 ------------------------------------------------------------------------------------------------------------------------
