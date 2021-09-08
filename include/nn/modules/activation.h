@@ -1,7 +1,7 @@
 #pragma once
 
 #include <torch/torch.h>
-#include "torchvision/macros.h"  // VISION_API
+#include "cte_macros.h"  
 
 namespace torch {
 namespace nn {
@@ -9,7 +9,7 @@ namespace nn {
 
 typedef std::function<torch::Tensor(torch::Tensor)> ActivationFunction;
 
-torch::Tensor VISION_API swish(torch::Tensor x);
+torch::Tensor CTE_API swish(torch::Tensor x);
 
 torch::Tensor relu6(torch::Tensor x);
 

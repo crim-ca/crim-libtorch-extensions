@@ -4,17 +4,15 @@
  * @link https://github.com/lukemelas/EfficientNet-PyTorch @endlink
  */
 
-#include "nn/models/BaseModel.h"
-#include "nn/modules/activation.h"
-
-#include <torch/torch.h>
-#include "torchvision/macros.h"  // VISION_API
-
 #include <algorithm>
 #include <tuple>
 #include <random>
 #include <string>
 
+#include "nn/models/BaseModel.h"
+#include "nn/modules/activation.h"
+#include <torch/torch.h>
+#include "cte_macros.h" 
 
 namespace vision {
 namespace models {
@@ -120,7 +118,7 @@ struct  BlockArgs
     int stride;
 };
 
-struct VISION_API EfficientNetOptions
+struct CTE_API EfficientNetOptions
 {
 public:
     EfficientNetOptions() = default;
@@ -195,7 +193,7 @@ private:
 };
 TORCH_MODULE(MBConvBlock);
 
-struct VISION_API EfficientNetV1Impl : torch::nn::Module
+struct CTE_API EfficientNetV1Impl : torch::nn::Module
 {
     //bool aux_logits, transform_input;
     EfficientNetV1Impl() = default;
