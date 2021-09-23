@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Fix invalid comparison value when limiting number of samples with ``--max-valid-samples`` option.
 
 [0.5.2](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.5.2) (2021-09-08)
 ------------------------------------------------------------------------------------------------------------------------
