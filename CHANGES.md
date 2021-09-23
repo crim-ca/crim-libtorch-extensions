@@ -4,7 +4,10 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Add CLI `--info` option flag allowing to display currently detected GPU, CPU, memory, provided parameters, etc.
+  without actually starting the training process to allow validation of the execution environment.
+* Improve CLI validation of required parameters for different operations.
+* Fix CLI `--version` option not callable by itself due to `--train` and `--valid` defined as required parameters.
 
 [0.5.3](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.5.3) (2021-09-23)
 ------------------------------------------------------------------------------------------------------------------------
