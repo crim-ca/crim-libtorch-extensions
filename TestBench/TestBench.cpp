@@ -315,12 +315,13 @@ int main(int argc, const char* argv[]) {
 
         size_t nb_class_train = count_classes(samples_train.second);
         size_t nb_class_valid = count_classes(samples_valid.second);
-        size_t nb_class = std::max(nb_class_train, nb_class_valid);
+        size_t nb_class = std::max(nb_class_train, nb_class_valid);  // all classes in dataset == model output size
+        size_t nb_class_avail = nb_class;                            // classes prepresented by dataset (or subset)
         size_t nb_total_train = samples_train.first.size();
         size_t nb_total_valid = samples_valid.first.size();
         size_t nb_total = nb_total_train + nb_total_valid;
 
-        LOGGER(INFO) << "Number of available total classes: " << nb_class << std::endl;
+        LOGGER(INFO) << "Number of available total classes: " << nb_class_avail << std::endl;
         LOGGER(INFO) << "Number of available train classes: " << nb_class_train << std::endl;
         LOGGER(INFO) << "Number of available valid classes: " << nb_class_valid << std::endl;
         LOGGER(INFO) << "Number of available total samples: " << nb_total << std::endl;
@@ -338,13 +339,19 @@ int main(int argc, const char* argv[]) {
             nb_total_valid = samples_valid.first.size();
         }
         if (nb_total != nb_total_train + nb_total_valid) {
+            /* IMPORTANT!
+                Must not modify 'nb_class' (used to define model output classes).
+                Otherwise, model would always change output layer size based on random subset selection.
+                We want to have a consistent model for the dataset, although not all classes could be represented.
+            */
             nb_total = nb_total_train + nb_total_valid;
-            nb_class = std::max(nb_class_train, nb_class_valid);
+            nb_class_avail = std::max(nb_class_train, nb_class_valid);
             LOGGER(WARN) << "Number of samples was modified according to options!" << std::endl;
             LOGGER(INFO) << "Number of selected total classes: " << nb_class << std::endl;
             LOGGER(INFO) << "Number of selected train classes: " << nb_class_train << std::endl;
             LOGGER(INFO) << "Number of selected valid classes: " << nb_class_valid << std::endl;
-            LOGGER(INFO) << "Number of selected total samples: " << nb_total << std::endl;
+            LOGGER(INFO) << "Number of selected total samples: " << nb_class_avail
+                         << " (out of " << nb_class << ")" << std::endl;
             LOGGER(INFO) << "Number of selected train samples: " << nb_total_train << std::endl;
             LOGGER(INFO) << "Number of selected valid samples: " << nb_total_valid << std::endl;
         }
@@ -352,12 +359,12 @@ int main(int argc, const char* argv[]) {
         show_machine_memory();
         show_gpu_memory();
 
-        if (nb_class < 2) {
+        if (nb_class_avail < 2) {
             LOGGER(ERROR) << "Cannot train without at least 2 classes!" << std::endl;
             return EXIT_FAILURE;
         }
-        if (nb_class_train == 0 || nb_class_valid == 0) {
-            LOGGER(ERROR) << "Cannot run train/valid loops without samples!" << std::endl;
+        if (nb_class_train < 2 || nb_class_valid < 2) {
+            LOGGER(ERROR) << "Cannot run train/valid without samples of at least 2 distinct classes!" << std::endl;
             return EXIT_FAILURE;
         }
 
