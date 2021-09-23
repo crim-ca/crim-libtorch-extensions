@@ -124,6 +124,7 @@ int main(int argc, const char* argv[]) {
         size_t max_train_samples = 0, max_valid_samples = 0;
         unsigned int seed = unsigned(std::time(nullptr));  // always random if not overridden
         int workers = -1;  // allow undefined
+        bool show_info{ false };
         bool debug{ false };
         bool verbose{ false };
         bool version{ false };
@@ -131,12 +132,14 @@ int main(int argc, const char* argv[]) {
 
         auto train_opts = app.add_option_group("Training Parameters",
             "Parameters that define behavior of training iterations and data loading.");
-        train_opts->add_option("--train", dataset_folder_train,
+        auto train_opt = train_opts->add_option("--train", dataset_folder_train,
             "Directory where training images categorized by class sub-folders can be loaded from."
-        )->check(CLI::ExistingDirectory)->required();
-        train_opts->add_option("--valid", dataset_folder_valid,
+        )->check(CLI::ExistingDirectory);
+        auto valid_opt = train_opts->add_option("--valid", dataset_folder_valid,
             "Directory where validation images categorized by class sub-folders can be loaded from."
-        )->check(CLI::ExistingDirectory)->required();
+        )->check(CLI::ExistingDirectory);
+        train_opt->needs(valid_opt);
+        valid_opt->needs(train_opt);
         train_opts->add_option("-e,--extension", data_file_extension,
             "Extension of image files to be considered for loading data."
         )->default_val(data_file_extension);
@@ -202,21 +205,31 @@ int main(int argc, const char* argv[]) {
         #ifndef USE_LOG_COUT
 
         auto log_opts = app.add_option_group("Logging Parameters", "Control logging options.");
-        log_opts->add_flag("-v,--verbose", verbose,
+        log_opts->add_flag<bool>("-v,--verbose", verbose,
             "Log more verbose messages including function and lines numbers."
         )->default_val(verbose);
-        log_opts->add_flag("-d,--debug", debug, "Log additional debug messages.")->default_val(debug);
+        log_opts->add_flag<bool>("-d,--debug", debug, "Log additional debug messages.")->default_val(debug);
         log_opts->add_option("-l,--logfile", log_file_path, "Output log path.");
-        log_opts->add_flag("--color,!--no-color", log_color,
+        log_opts->add_flag<bool>("--color,!--no-color", log_color,
             "Enable/disable color formatting of log entries."
         )->default_val(log_color);
 
         #endif // USE_LOG_COUT
 
-        app.add_flag("-V,--version", version, "Print the version number.");
+        auto main_opt = app.add_option_group("Operation");
+        auto ver_opt = app.add_flag("-V,--version", version, "Print the version number.");
+        auto info_opt = app.add_flag("-i,--info", show_info,
+            "Only display infomation about the environment and parameters (no processing). "
+            "Additional options provide will be reported as summary of operations to be applied."
+        );
 
         CLI11_PARSE(app, argc, argv);
         //https://stackoverflow.com/questions/428630/assigning-cout-to-a-variable-name
+
+        if (app.count_all() < 2) {  // 1 always for the app itself
+            std::cout << "Missing options. Refer to '--help'." << std::endl;
+            return EXIT_SUCCESS;
+        }
 
         auto start_time = std::chrono::steady_clock::now();
 
@@ -266,20 +279,33 @@ int main(int argc, const char* argv[]) {
         if (has_cuda)
             show_gpu_properties();
 
-        if (dataset_folder_train.empty() || dataset_folder_valid.empty()) {
-            LOGGER(ERROR) << "Invalid directories for train/valid datasets provided no data!" << std::endl;
-            return EXIT_FAILURE;
-        }
+        auto verb = show_info ? "Would" : "Will";
 
         if (!ckpt_load_path.empty()) {
             ckpt_load_path = cv::utils::fs::canonical(ckpt_load_path);
-            LOGGER(INFO) << "Will attempt loading model checkpoint from file: [" << ckpt_load_path << "]" << std::endl;
+            LOGGER(INFO) << verb << " attempt loading model checkpoint from file: ["
+                         << ckpt_load_path << "]" << std::endl;
         }
+        else {
+            LOGGER(WARN) << verb << " train from scratch. No checkpoint provided for inital model weights." << std::endl;
+        }
+
         ckpt_save_path = cv::utils::fs::canonical(ckpt_save_path);
         if (!cv::utils::fs::isDirectory(ckpt_save_path)) {
             cv::utils::fs::createDirectory(ckpt_save_path);
         }
-        LOGGER(DEBUG) << "Will save epoch checkpoints in [" << ckpt_save_path << "]" << std::endl;
+        LOGGER(DEBUG) << verb << " save epoch checkpoints in [" << ckpt_save_path << "]" << std::endl;
+
+        if (dataset_folder_train.empty() || dataset_folder_valid.empty()) {
+            auto info_level = show_info ? WARN : ERROR;
+            LOGGER(info_level) << "Invalid directories for train/valid datasets provided no data!" << std::endl;
+            if (!show_info)
+                return EXIT_FAILURE;
+        }
+        if (show_info) {
+            LOGGER(INFO) << "Not processing because only information was requested." << std::endl;
+            return EXIT_SUCCESS;
+        }
 
         LOGGER(INFO) << "Searching directories for samples..." << std::endl;
 
@@ -289,12 +315,13 @@ int main(int argc, const char* argv[]) {
 
         size_t nb_class_train = count_classes(samples_train.second);
         size_t nb_class_valid = count_classes(samples_valid.second);
-        size_t nb_class = std::max(nb_class_train, nb_class_valid);
+        size_t nb_class = std::max(nb_class_train, nb_class_valid);  // all classes in dataset == model output size
+        size_t nb_class_avail = nb_class;                            // classes prepresented by dataset (or subset)
         size_t nb_total_train = samples_train.first.size();
         size_t nb_total_valid = samples_valid.first.size();
         size_t nb_total = nb_total_train + nb_total_valid;
 
-        LOGGER(INFO) << "Number of available total classes: " << nb_class << std::endl;
+        LOGGER(INFO) << "Number of available total classes: " << nb_class_avail << std::endl;
         LOGGER(INFO) << "Number of available train classes: " << nb_class_train << std::endl;
         LOGGER(INFO) << "Number of available valid classes: " << nb_class_valid << std::endl;
         LOGGER(INFO) << "Number of available total samples: " << nb_total << std::endl;
@@ -312,13 +339,19 @@ int main(int argc, const char* argv[]) {
             nb_total_valid = samples_valid.first.size();
         }
         if (nb_total != nb_total_train + nb_total_valid) {
+            /* IMPORTANT!
+                Must not modify 'nb_class' (used to define model output classes).
+                Otherwise, model would always change output layer size based on random subset selection.
+                We want to have a consistent model for the dataset, although not all classes could be represented.
+            */
             nb_total = nb_total_train + nb_total_valid;
-            nb_class = std::max(nb_class_train, nb_class_valid);
+            nb_class_avail = std::max(nb_class_train, nb_class_valid);
             LOGGER(WARN) << "Number of samples was modified according to options!" << std::endl;
             LOGGER(INFO) << "Number of selected total classes: " << nb_class << std::endl;
             LOGGER(INFO) << "Number of selected train classes: " << nb_class_train << std::endl;
             LOGGER(INFO) << "Number of selected valid classes: " << nb_class_valid << std::endl;
-            LOGGER(INFO) << "Number of selected total samples: " << nb_total << std::endl;
+            LOGGER(INFO) << "Number of selected total samples: " << nb_class_avail
+                         << " (out of " << nb_class << ")" << std::endl;
             LOGGER(INFO) << "Number of selected train samples: " << nb_total_train << std::endl;
             LOGGER(INFO) << "Number of selected valid samples: " << nb_total_valid << std::endl;
         }
@@ -326,12 +359,12 @@ int main(int argc, const char* argv[]) {
         show_machine_memory();
         show_gpu_memory();
 
-        if (nb_class < 2) {
+        if (nb_class_avail < 2) {
             LOGGER(ERROR) << "Cannot train without at least 2 classes!" << std::endl;
             return EXIT_FAILURE;
         }
-        if (nb_class_train == 0 || nb_class_valid == 0) {
-            LOGGER(ERROR) << "Cannot run train/valid loops without samples!" << std::endl;
+        if (nb_class_train < 2 || nb_class_valid < 2) {
+            LOGGER(ERROR) << "Cannot run train/valid without samples of at least 2 distinct classes!" << std::endl;
             return EXIT_FAILURE;
         }
 

@@ -4,7 +4,15 @@
 ------------------------------------------------------------------------------------------------------------------------
 ____________
 
-* Nothing new for the moment.
+* Add CLI `--info` option flag allowing to display currently detected GPU, CPU, memory, provided parameters, etc.
+  without actually starting the training process to allow validation of the execution environment.
+* Improve CLI validation of required parameters for different operations.
+* Fix CLI `--version` option not callable by itself due to `--train` and `--valid` defined as required parameters.
+* Fix resolution of number of classes employed to form the output layer size of the model when a subset of the dataset
+  is requested by `--max-train-samples` or `--max-valid-samples` options. Because of those data reduction options, the
+  number of filtered classes can mismatch the total number of available sample classes in the original dataset, creating
+  variable model output layer size. The model is now created with a fixed size matching original dataset classes count
+  even if not all of them are represented in the subset.
 
 [0.5.3](https://www.crim.ca/stash/projects/VISI/repos/crim-libtorch-extensions/browse?at=refs/tags/0.5.3) (2021-09-23)
 ------------------------------------------------------------------------------------------------------------------------
